@@ -311,7 +311,7 @@ div.tocify {
 
 
 <p><strong>Last updated:</strong> 2017-01-11</p>
-<p><strong>Code version:</strong> 4206ac5f868630053fc8bb917cf46daba94f120f</p>
+<p><strong>Code version:</strong> e502b63b9936637bedb8474507738480277957d8</p>
 <div id="outline" class="section level2">
 <h2>Outline</h2>
 <p>I want to try incorporating the multi-resolution ideas from <code>fast_ash.cpp</code> into the fix point function in <code>MixSquarem.cpp</code>.</p>
@@ -358,10 +358,10 @@ $objfn
 [1] 57641.21</code></pre>
 <pre class="r"><code>system.time(fixptfn(pi,lik,prior))</code></pre>
 <pre><code>   user  system elapsed 
-  0.633   0.027   0.781 </code></pre>
+  0.406   0.013   0.453 </code></pre>
 <pre class="r"><code>system.time(fixptfn(pi,lik,prior,tol=1e-8))</code></pre>
 <pre><code>   user  system elapsed 
-  0.011   0.002   0.012 </code></pre>
+  0.009   0.002   0.010 </code></pre>
 <pre class="r"><code># This is closer to the usual initial value we use in ash
 normalize=function(x){x/sum(x)}
 pi = rep(1/nsamp, ncomp(fitted_g))
@@ -371,11 +371,11 @@ pi = normalize(pi)
 control$multiscale_tol=0
 system.time(EM0&lt;-cxxMixSquarem(lik,prior,pi,control))</code></pre>
 <pre><code>   user  system elapsed 
-167.415   6.466 183.343 </code></pre>
+175.323   7.398 200.462 </code></pre>
 <pre class="r"><code>control$multiscale_tol=1e-5
 system.time(EM5&lt;-cxxMixSquarem(lik,prior,pi,control))</code></pre>
 <pre><code>   user  system elapsed 
-  1.421   1.685   3.298 </code></pre>
+  1.344   1.781   3.327 </code></pre>
 <pre class="r"><code>EM0</code></pre>
 <pre><code>$pihat
  [1] 1.987464e-14 0.000000e+00 6.812328e-18 8.659740e-20 8.775203e-18

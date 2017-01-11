@@ -311,7 +311,7 @@ div.tocify {
 
 
 <p><strong>Last updated:</strong> 2017-01-11</p>
-<p><strong>Code version:</strong> 4206ac5f868630053fc8bb917cf46daba94f120f</p>
+<p><strong>Code version:</strong> e502b63b9936637bedb8474507738480277957d8</p>
 <div id="overview" class="section level2">
 <h2>Overview</h2>
 <p>The file <code>fast_ash.cpp</code> contains some rcpp functions to compare.</p>
@@ -383,18 +383,18 @@ ws</code></pre>
 <pre class="r"><code>tlik = t(lik)
 system.time(wsum_direct(pi,lik,0,nsamp-1))</code></pre>
 <pre><code>   user  system elapsed 
-  0.013   0.001   0.015 </code></pre>
+  0.013   0.002   0.015 </code></pre>
 <pre class="r"><code>system.time(wsum(pi,lik,0,nsamp-1,0,0,tol=1e-3))</code></pre>
 <pre><code>   user  system elapsed 
-  0.000   0.000   0.001 </code></pre>
+  0.001   0.000   0.000 </code></pre>
 <pre class="r"><code>system.time(wsum(pi,lik,0,nsamp-1,0,0,tol=1e-5))</code></pre>
 <pre><code>   user  system elapsed 
-  0.049   0.003   0.053 </code></pre>
+  0.053   0.003   0.064 </code></pre>
 <pre class="r"><code>wsum=rep(0,length(pi))
 lprobsum = 0
 system.time(add_to_wsum(lprobsum,wsum,pi,lik,0,nsamp-1,0,0,tol=1e-5))</code></pre>
 <pre><code>   user  system elapsed 
-  0.043   0.001   0.045 </code></pre>
+  0.049   0.001   0.056 </code></pre>
 </div>
 <div id="session-information" class="section level2">
 <h2>Session information</h2>

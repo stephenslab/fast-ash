@@ -311,7 +311,7 @@ div.tocify {
 
 
 <p><strong>Last updated:</strong> 2017-01-11</p>
-<p><strong>Code version:</strong> 4206ac5f868630053fc8bb917cf46daba94f120f</p>
+<p><strong>Code version:</strong> e502b63b9936637bedb8474507738480277957d8</p>
 <div id="outline" class="section level2">
 <h2>Outline</h2>
 <p>The purpose here is to investigate a “general” approach to speeding up ash. Maybe one that will be more general with less code.</p>
@@ -354,10 +354,10 @@ res2$loglik</code></pre>
 <p>So pruning makes things worse… but higher resolution grid improves things.</p>
 <pre class="r"><code>system.time(ash.workhorse(z,1,mixcompdist = &quot;normal&quot;,g = g.small))</code></pre>
 <pre><code>   user  system elapsed 
-  6.188   0.779   6.513 </code></pre>
+  7.000   0.852   7.864 </code></pre>
 <pre class="r"><code>system.time(ash.workhorse(z,1,mixcompdist = &quot;normal&quot;,g = g.small,optmethod=&quot;cxxMixSquarem&quot;,control=list(trace=FALSE)))</code></pre>
 <pre><code>   user  system elapsed 
-  3.364   0.445   3.928 </code></pre>
+  3.896   0.507   4.957 </code></pre>
 <p>So EM is faster on small gs?</p>
 <p>My guess is that EM is slowed down by all those very-near-zero components.</p>
 </div>
