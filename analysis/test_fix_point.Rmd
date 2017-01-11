@@ -72,5 +72,5 @@ EM5
 
 ## Session information
 
-```{r info, echo = FALSE}
+```{r session-info, echo = FALSE}
 ```

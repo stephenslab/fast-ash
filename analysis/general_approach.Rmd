@@ -80,5 +80,5 @@ My guess is that EM is slowed down by all those very-near-zero components.
 
 ## Session information
 
-```{r info, echo = FALSE}
+```{r session-info, echo = FALSE}
 ```

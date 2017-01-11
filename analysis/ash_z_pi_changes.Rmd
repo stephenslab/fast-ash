@@ -75,5 +75,5 @@ n_within_tol(93750)
 
 ## Session information
 
-```{r info, echo = FALSE}
+```{r session-info, echo = FALSE}
 ```

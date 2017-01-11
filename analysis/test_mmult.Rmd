@@ -40,5 +40,5 @@ m <- microbenchmark( mmult1( v , mat ) , mmult(mat,v), sweep(mat, 2, v, FUN = "*
 
 ## Session information
 
-```{r info, echo = FALSE}
+```{r session-info, echo = FALSE}
 ```
