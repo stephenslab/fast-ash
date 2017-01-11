@@ -6,7 +6,53 @@ output:
 ---
 
 
-# Analyses
+# Background
 
-- [Breaking ash into its component parts](ash_stages.html)
-- [Initial assessment of scaling of mixIP with n,k](mixIP-scaling-nk.html)
+The Adaptive Shrinkage method in (http://biorxiv.org/content/early/2016/06/08/038216)
+involves solving a convex optimization problem. Currently in my
+[R package](http://github.com/stephens999/ashr) I use either an accelerated EM algorithm or an Interior Point (IP) method to solve this problem. (The interior point method uses the `REBayes` package function `KWdual` which interfaces with the `mosek` library.) Both EM and IP are quite quick enough for single data sets, even quite large ones (e.g. $10^6$ observations) but in some applications (e.g. matrix factorization) we want to run this algorithm hundreds or thousands of times. So we seek to speed it up.
+
+# Make sure we are solving the right problem
+
+The R package software actually involves three steps. 
+
+  - compute an $n \times k$ likelihood matrix $L$.
+
+  - estimate mixture proportions $\pi_1,\dots,\pi_k$ by maximizing $\sum_j \log \sum_k \pi_k L_{jk}$, which is the convex optimization problem.
+
+  - compute posterior quantities given these mixture proportions.
+
+All 3 steps take some time, but my expectation is that convex optimization step is taking most of the time. In [this vignette](ash_stages.html) I made a quick assessment of how these three stages break down to make sure this expectation is correct. 
+In fact thet last step (compute posterior quantities) also takes non-trivial time for large data sets. However, I believe this is due to some inefficiencies in the current implementation that would not be too hard to fix. I therefore focus on speeding up
+the optimization.
+
+# Interior Point vs EM
+
+The IP method is faster than the accelerated EM. However, there
+are some advantages of the EM: 
+
+  - I understand it; the IP method is basically a black box to me at present.
+      + In particular I understand that we can reduce iterations by improvinging initalization, which is unclear to me for IP.
+      + And we can easily do just a few iterations of EM to improve the result without iterating to convergence. This may be relevant when running the method many times iteratively, where it may not pay to run the method to full convergence every iteration.       + Possibly the above are also true of IP but I don't actually know. Honestly, I don't even know how to set the starting point in `REBayes::KWDual`.
+  
+  - The EM code is *very* simple
+  
+For this reason I start by working with EM. Hopefully things we learn there might
+also translate to the IP method. We can return to this in the future.
+
+For future reference: I did do some quick assessments of how IP scales with $n$ and $k$ [here](mixIP-scaling-nk.html). This suggests that scaling exceeds linear cost, particularly for $n$, presumably because the number of iterations needed increases with $n$.
+  
+# Speeding EM by kd-tree like methods
+
+Peter Carbonetto suggested we use kd trees to speed up EM calculations, and
+pointed me to [this paper](http://www.cs.cmu.edu/~psand). Based on this I came
+up with the following strategy.
+
+First, lets simplify the case to where the standard errors of ever
+
+
+
+
+
+
+

@@ -207,12 +207,33 @@ $(document).ready(function () {
 </div>
 
 
-<div id="analyses" class="section level1">
-<h1>Analyses</h1>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<p>The Adaptive Shrinkage method in (<a href="http://biorxiv.org/content/early/2016/06/08/038216" class="uri">http://biorxiv.org/content/early/2016/06/08/038216</a>) involves solving a convex optimization problem. Currently in my <a href="http://github.com/stephens999/ashr">R package</a> I use either an accelerated EM algorithm or an Interior Point (IP) method to solve this problem. (The interior point method uses the <code>REBayes</code> package function <code>KWdual</code> which interfaces with the <code>mosek</code> library.) Both EM and IP are quite quick enough for single data sets, even quite large ones (e.g. <span class="math inline">\(10^6\)</span> observations) but in some applications (e.g. matrix factorization) we want to run this algorithm hundreds or thousands of times. So we seek to speed it up.</p>
+</div>
+<div id="make-sure-we-are-solving-the-right-problem" class="section level1">
+<h1>Make sure we are solving the right problem</h1>
+<p>The R package software actually involves three steps.</p>
 <ul>
-<li><a href="ash_stages.html">Breaking ash into its component parts</a></li>
-<li><a href="mixIP-scaling-nk.html">Initial assessment of scaling of mixIP with n,k</a></li>
+<li><p>compute an <span class="math inline">\(n \times k\)</span> likelihood matrix <span class="math inline">\(L\)</span>.</p></li>
+<li><p>estimate mixture proportions <span class="math inline">\(\pi_1,\dots,\pi_k\)</span> by maximizing <span class="math inline">\(\sum_j \log \sum_k \pi_k L_{jk}\)</span>, which is the convex optimization problem.</p></li>
+<li><p>compute posterior quantities given these mixture proportions.</p></li>
 </ul>
+<p>All 3 steps take some time, but my expectation is that convex optimization step is taking most of the time. In <a href="ash_stages.html">this vignette</a> I made a quick assessment of how these three stages break down to make sure this expectation is correct. In fact thet last step (compute posterior quantities) also takes non-trivial time for large data sets. However, I believe this is due to some inefficiencies in the current implementation that would not be too hard to fix. I therefore focus on speeding up the optimization.</p>
+</div>
+<div id="interior-point-vs-em" class="section level1">
+<h1>Interior Point vs EM</h1>
+<p>The IP method is faster than the accelerated EM. However, there are some advantages of the EM:</p>
+<ul>
+<li>I understand it; the IP method is basically a black box to me at present.
+<ul>
+<li>In particular I understand that we can reduce iterations by improvinging initalization, which is unclear to me for IP.</li>
+<li>And we can easily do just a few iterations of EM to improve the result without iterating to convergence. This may be relevant when running the method many times iteratively, where it may not pay to run the method to full convergence every iteration. + Possibly the above are also true of IP but I don’t actually know. Honestly, I don’t even know how to set the starting point in ‘REBayes::KWDual’.</li>
+</ul></li>
+<li>The EM code is <em>very</em> simple</li>
+</ul>
+<p>For this reason I start by working with EM. Hopefully things we learn there might also translate to the IP method.</p>
+<p>For future reference: I did do some quick assessments of how IP scales with <span class="math inline">\(n\)</span> and <span class="math inline">\(k\)</span> <a href="mixIP-scaling-nk.html">here</a>. This suggests that scaling exceeds linear cost, particularly for <span class="math inline">\(n\)</span>, presumably because the number of iterations needed increases with <span class="math inline">\(n\)</span>.</p>
 </div>
 
 <hr>
