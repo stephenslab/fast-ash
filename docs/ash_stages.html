@@ -311,7 +311,7 @@ div.tocify {
 
 
 <p><strong>Last updated:</strong> 2017-01-11</p>
-<p><strong>Code version:</strong> e502b63b9936637bedb8474507738480277957d8</p>
+<p><strong>Code version:</strong> c4328e697b7b4a78e368219c72e4df96c5614890</p>
 <div id="outline" class="section level2">
 <h2>Outline</h2>
 <p>Ash has essentially three stages: - compute the likelihood matrix (whose j,k element is p(betahat_j| component k)) - estimate g - compute posterior quantities like E(beta_j | betahat_j, ghat)</p>
@@ -333,19 +333,19 @@ time_matrix = system.time(llik &lt;- t(ashr:::log_comp_dens_conv.normalmix(fitte
 
 total_time</code></pre>
 <pre><code>   user  system elapsed 
- 29.281   4.256  25.107 </code></pre>
+ 29.190   4.545  23.137 </code></pre>
 <pre class="r"><code>time_matrix</code></pre>
 <pre><code>   user  system elapsed 
-  0.195   0.039   0.236 </code></pre>
+  0.118   0.045   0.168 </code></pre>
 <pre class="r"><code>time_no_output</code></pre>
 <pre><code>   user  system elapsed 
- 17.213   3.060   9.474 </code></pre>
+ 19.372   2.690   9.413 </code></pre>
 <pre class="r"><code>time_min_output</code></pre>
 <pre><code>   user  system elapsed 
- 18.799   3.303  11.686 </code></pre>
+ 20.433   2.874  11.774 </code></pre>
 <pre class="r"><code>time_no_output_no_fit</code></pre>
 <pre><code>   user  system elapsed 
-  0.002   0.001   0.003 </code></pre>
+  0.002   0.000   0.003 </code></pre>
 <p>Conclusion: the initial matrix calculation is relatively negligible. The full output takes about half the elapsed time, and a quarter of the user time.</p>
 </div>
 <div id="same-for-unimix" class="section level1">
@@ -362,19 +362,19 @@ time_matrix = system.time(llik &lt;- t(ashr:::log_comp_dens_conv.unimix(fitted_g
 
 total_time</code></pre>
 <pre><code>   user  system elapsed 
- 35.333   5.348  33.835 </code></pre>
+ 36.538   4.848  30.058 </code></pre>
 <pre class="r"><code>time_matrix</code></pre>
 <pre><code>   user  system elapsed 
-  0.393   0.080   0.537 </code></pre>
+  0.360   0.072   0.442 </code></pre>
 <pre class="r"><code>time_no_output</code></pre>
 <pre><code>   user  system elapsed 
- 13.720   2.595   7.164 </code></pre>
+ 18.329   1.101   6.705 </code></pre>
 <pre class="r"><code>time_min_output</code></pre>
 <pre><code>   user  system elapsed 
- 22.693   3.820  18.394 </code></pre>
+ 26.393   3.080  16.579 </code></pre>
 <pre class="r"><code>time_no_output_no_fit</code></pre>
 <pre><code>   user  system elapsed 
-  0.002   0.000   0.002 </code></pre>
+  0.002   0.001   0.003 </code></pre>
 <p>Now the full output takes more than half the elapsed time, and about half the user time.</p>
 <div id="session-information" class="section level2">
 <h2>Session information</h2>

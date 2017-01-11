@@ -311,7 +311,7 @@ div.tocify {
 
 
 <p><strong>Last updated:</strong> 2017-01-11</p>
-<p><strong>Code version:</strong> e502b63b9936637bedb8474507738480277957d8</p>
+<p><strong>Code version:</strong> c4328e697b7b4a78e368219c72e4df96c5614890</p>
 <div id="outline" class="section level2">
 <h2>Outline</h2>
 <p>This document simply checks speed of some approaches to vector-matrix multiplication, based on code at [<a href="http://stackoverflow.com/questions/18349053/fastest-way-for-multiplying-a-matrix-to-a-vector" class="uri">http://stackoverflow.com/questions/18349053/fastest-way-for-multiplying-a-matrix-to-a-vector</a>] and also comparing to method used in current ash code.</p>
@@ -328,10 +328,10 @@ identical(mmult1(v,mat),mmult(mat,v))</code></pre>
   print( m , &quot;relative&quot; , order = &quot;median&quot; , digits = 3 )</code></pre>
 <pre><code>Unit: relative
                         expr   min    lq  mean median    uq   max neval
-               mmult(mat, v)  1.00  1.00  1.00    1.0  1.00  1.00   100
-              mmult1(v, mat)  3.65  3.71  4.57    3.7  3.68  9.14   100
-               t(t(mat) * v) 14.70 15.07 16.82   15.9 16.76 46.97   100
- sweep(mat, 2, v, FUN = &quot;*&quot;) 20.73 21.74 24.39   24.1 24.18 58.13   100</code></pre>
+               mmult(mat, v)  1.00  1.00  1.00   1.00  1.00  1.00   100
+              mmult1(v, mat)  3.64  3.35  3.76   3.26  3.24  7.36   100
+               t(t(mat) * v) 14.79 13.49 15.47  13.59 16.84 40.14   100
+ sweep(mat, 2, v, FUN = &quot;*&quot;) 21.35 18.77 20.69  19.22 21.55 41.99   100</code></pre>
 </div>
 <div id="session-information" class="section level2">
 <h2>Session information</h2>
