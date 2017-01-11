@@ -4,5 +4,5 @@
 .Ruserdata
 analysis/figure
 analysis/*html
-analysis/*cache*
+analysis/*_cache
 output/ash.bigz.RData
