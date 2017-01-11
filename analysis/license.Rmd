@@ -1,19 +1,29 @@
 ---
 title: "License"
-output:
-  html_document:
-    toc: false
 ---
 
-What license are you using for your code? See [choosealicense.com][choose] for
-help deciding. And don't forget to update the file `LICENSE` in the root of your
-Git repo.
+**Last updated:** `r Sys.Date()`
 
-What license are you using for the written content on your site? It is
-traditional to choose a [Creative Commons][cc] license for this type of content.
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
 
-[choose]: http://choosealicense.com/
-[cc]: https://creativecommons.org/choose/
 
-How should others cite your work? Don't forget to update the file `CITATION` in
-the root of your Git repo.
+The repository is currently licensed under a [Creative Commons Attribution 4.0 International License][site-license]. 
+We encourage others to tweak, remix, and build upon our work.
+
+[site-license]: https://creativecommons.org/licenses/by/4.0/legalcode
+
+
+The site layout is modeled after the [RMarkdown][rmarkdown] tutorial site. 
+RMarkdown package is used to create our custom template and also to 
+customize our HTML output. 
+
+Special thanks [John Blischak][john-site] at the University of Chicago 
+for sharing his workflow template. Our workflow was inspired by his [site][singleCellSeq] 
+that documents the steps for preprocessing and statistical analysis 
+in a project that investigates experimental artifacts in single-cell RNA-seq data. 
+
+[rmarkdown]: http://rmarkdown.rstudio.com
+[john-site]: https://github.com/jdblischak
+[singleCellSeq]: https://github.com/jdblischak/singleCellSeq/
+
+

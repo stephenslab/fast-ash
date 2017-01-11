@@ -1,0 +1,81 @@
+---
+title: "Breaking the computation time of ash into stages"
+author: "Matthew Stephens"
+date: 2016-11-17
+output: 
+  html_document:
+    css: layout/floating-toc.css
+    toc: true
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r read-chunk, include=FALSE, cache=FALSE}
+knitr::read_chunk("chunks.R")
+```
+
+```{r knitr-opts-chunk, include=FALSE}
+```
+
+## Outline
+
+Ash has essentially three stages:
+- compute the likelihood matrix (whose j,k element is p(betahat_j| component k))
+- estimate g
+- compute posterior quantities like E(beta_j | betahat_j, ghat)
+
+Here we start to assess how long each step takes
+
+First for normalmix:
+```{r}
+library(ashr)
+set.seed(100)
+z = rnorm(100000,0,2)
+
+total_time= system.time(res <- ash(z,1,mixcompdist="normal"))
+fitted_g  = get_fitted_g(res)
+data = res$data
+
+time_no_output= system.time(ash(z,1,mixcompdist="normal",outputlevel=0))
+time_min_output= system.time(ash(z,1,mixcompdist="normal",outputlevel=1))
+time_no_output_no_fit= system.time(ash(z,1,mixcompdist="normal",outputlevel=0,fixg=TRUE,g=fitted_g))
+
+time_matrix = system.time(llik <- t(ashr:::log_comp_dens_conv.normalmix(fitted_g,data)))
+
+total_time
+time_matrix
+time_no_output
+time_min_output
+time_no_output_no_fit
+```
+
+Conclusion: the initial matrix calculation is relatively negligible.
+The full output takes about half the elapsed time, and a quarter of the user time.
+
+# Same for unimix:
+```{r}
+total_time= system.time(res <- ash(z,1,mixcompdist="uniform"))
+fitted_g  = get_fitted_g(res)
+data = res$data
+
+time_no_output= system.time(ash(z,1,mixcompdist="uniform",outputlevel=0))
+time_min_output= system.time(ash(z,1,mixcompdist="uniform",outputlevel=1))
+
+time_no_output_no_fit= system.time(ash(z,1,mixcompdist="uniform",outputlevel=0,fixg=TRUE,g=fitted_g))
+time_matrix = system.time(llik <- t(ashr:::log_comp_dens_conv.unimix(fitted_g,data)))
+
+total_time
+time_matrix
+time_no_output
+time_min_output
+time_no_output_no_fit
+```
+
+Now the full output takes more than half the elapsed time, and about half the user time.
+
+## Session information
+
+```{r info, echo = FALSE}
+```

@@ -1,0 +1,84 @@
+---
+title: "General approach to speeding up ash"
+author: "Matthew Stephens"
+date: 2016-12-03
+output: 
+  html_document:
+    css: layout/floating-toc.css
+    toc: true
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r read-chunk, include=FALSE, cache=FALSE}
+knitr::read_chunk("chunks.R")
+```
+
+```{r knitr-opts-chunk, include=FALSE}
+```
+
+
+## Outline
+
+The purpose here is to investigate a "general" approach to speeding up ash. 
+Maybe one that will be more general with less code.
+
+The strategy I have in mind is:
+
+- sort the observations somehow (eg z score)
+- take a stratified sample of, say, 100 z scores (including the largest one)
+- fit ash using K big to these 100.
+- prune out the pi that are essentially 0 (reduces K)
+- use the bisection multiresolution tree strategy, with this initial estimated pi, 
+to summarize the n observations by a much smaller number (with weights). 
+That is, we are effectively doing stratified sampling.
+- re-run ash on this stratified sample.
+
+Based on results below the reducing of K might not be a priority. Might just be
+best to directly do bisection with pi = constant to first do the stratified sampling.
+
+```{r}
+library("ashr")
+load("../output/ash.bigz.RData")
+subset = seq(1,n,length=100)
+zsub = z[subset]
+zsub.ash = ash.workhorse(z[subset],1,mixcompdist = "normal", gridmult = 1.1)
+g = get_fitted_g(zsub.ash)
+
+calc_loglik(g,res$data)
+```
+
+```{r}
+prune_g = function(g, thresh = 1e-5){
+  cl = class(g)
+  keep = g$pi > thresh
+  g = lapply(g, function(x){x[keep]})
+  g$pi = g$pi/sum(g$pi)
+  class(g) = cl
+  return(g)
+}
+g.small = prune_g(g)
+res2 = ash.workhorse(z,1,mixcompdist = "normal",g = g.small)
+res3 = ash.workhorse(z,1,mixcompdist = "normal",g = g)
+res2$loglik
+res3$loglik
+res$loglik
+```
+
+So pruning makes things worse... but higher resolution grid improves things.
+
+```{r}
+system.time(ash.workhorse(z,1,mixcompdist = "normal",g = g.small))
+system.time(ash.workhorse(z,1,mixcompdist = "normal",g = g.small,optmethod="cxxMixSquarem",control=list(trace=FALSE)))
+```
+So EM is faster on small gs?
+
+My guess is that EM is slowed down by all those very-near-zero components.
+
+
+## Session information
+
+```{r info, echo = FALSE}
+```

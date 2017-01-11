@@ -1,0 +1,44 @@
+---
+title: "Test matrix multiplication"
+author: "Matthew Stephens"
+date: 2016-11-24
+output: 
+  html_document:
+    css: layout/floating-toc.css
+    toc: true
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r read-chunk, include=FALSE, cache=FALSE}
+knitr::read_chunk("chunks.R")
+```
+
+```{r knitr-opts-chunk, include=FALSE}
+```
+
+
+## Outline
+
+This document simply checks speed of some approaches to vector-matrix multiplication, based on code at [http://stackoverflow.com/questions/18349053/fastest-way-for-multiplying-a-matrix-to-a-vector]
+and also comparing to method used in current ash code.
+
+```{r}
+Rcpp::sourceCpp('mmult.cpp')
+require( microbenchmark )
+n=100000
+k = 17
+mat = matrix(rnorm(n*k),nrow=n)
+v = rnorm(17)
+identical(mmult1(v,mat),mmult(mat,v))
+
+m <- microbenchmark( mmult1( v , mat ) , mmult(mat,v), sweep(mat, 2, v, FUN = "*") , t( t(mat) * v ) , times = 100L )
+  print( m , "relative" , order = "median" , digits = 3 )
+```
+
+## Session information
+
+```{r info, echo = FALSE}
+```

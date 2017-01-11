@@ -1,0 +1,76 @@
+---
+title: "Test the fix point function and EM algorithm"
+author: "Matthew Stephens"
+date: 2016-11-26
+output: 
+  html_document:
+    css: layout/floating-toc.css
+    toc: true
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r read-chunk, include=FALSE, cache=FALSE}
+knitr::read_chunk("chunks.R")
+```
+
+```{r knitr-opts-chunk, include=FALSE}
+```
+
+## Outline
+
+I want to try incorporating the multi-resolution ideas from `fast_ash.cpp` into the fix point function in `MixSquarem.cpp`.
+
+```{r}
+library(ashr)
+set.seed(100)
+nsamp=100000
+z = rnorm(nsamp,0,2)
+#now sort z so that they are in order
+z = z[order(abs(z))]
+
+res <- ash(z,1,mixcompdist="normal",outputlevel=4)
+lik = res$fit_details$matrix_lik
+fitted_g = get_fitted_g(res)
+
+# set up the initial value of pi as uniform
+pi = rep(1, ncomp(fitted_g))
+control=list(K = 1, method=3, square=TRUE, step.min0=1, step.max0=1, mstep=4, kr=1, objfn.inc=1,tol=1.e-07, maxiter=5000, trace=FALSE)
+
+prior = rep(1,ncomp(fitted_g))
+```
+
+
+```{r}
+Rcpp::sourceCpp('MixSquarem.cpp')
+fixptfn_orig(pi,lik,prior)
+fixptfn(pi,lik,prior)
+fixptfn(pi,lik,prior,tol=1e-8)
+system.time(fixptfn(pi,lik,prior))
+system.time(fixptfn(pi,lik,prior,tol=1e-8))
+```
+
+```{r}
+# This is closer to the usual initial value we use in ash
+normalize=function(x){x/sum(x)}
+pi = rep(1/nsamp, ncomp(fitted_g))
+pi[1]=1
+pi = normalize(pi)
+
+control$multiscale_tol=0
+system.time(EM0<-cxxMixSquarem(lik,prior,pi,control))
+
+control$multiscale_tol=1e-5
+system.time(EM5<-cxxMixSquarem(lik,prior,pi,control))
+
+EM0
+EM5
+```
+
+
+## Session information
+
+```{r info, echo = FALSE}
+```

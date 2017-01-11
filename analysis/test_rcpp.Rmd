@@ -1,0 +1,94 @@
+---
+title: "First try at fastash via Rcpp"
+author: "Matthew Stephens"
+date: 2016-11-22
+output: 
+  html_document:
+    css: layout/floating-toc.css
+    toc: true
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r read-chunk, include=FALSE, cache=FALSE}
+knitr::read_chunk("chunks.R")
+```
+
+```{r knitr-opts-chunk, include=FALSE}
+```
+
+## Overview
+
+The file `fast_ash.cpp` contains some rcpp functions to compare.
+
+The function `wsum_direct` simply sums the responsibilities (posterior class probabilities) directly. This is close to the approach currently used in ash.
+
+In contrast the `wsum` method is based on a multi-resolution method that bifurcates the data
+and merges rows that yield the same results within some specified tolerance.
+
+
+```{r, cache=TRUE}
+library(ashr)
+set.seed(100)
+nsamp=100000
+z = rnorm(nsamp,0,2)
+#now sort z so that they are in order
+z = z[order(abs(z))]
+
+res <- ash(z,1,mixcompdist="normal",outputlevel=4)
+lik = res$fit_details$matrix_lik
+fitted_g = get_fitted_g(res)
+
+# set up the initial value of pi as uniform
+pi = rep(1, ncomp(fitted_g))
+
+# This is closer to the usual initial value we use in ash
+# normalize=function(x){x/sum(x)}
+#pi = rep(1/nsamp, ncomp(fitted_g))
+#pi[1]=1
+#pi = normalize(pi)
+
+
+```
+
+Here we just check the approximate methods produce similar answers to the direct method.
+```{r}
+Rcpp::sourceCpp('fast_ash.cpp')
+wsum_direct(pi,lik,0,nsamp-1)
+wsum(pi,lik,0,nsamp-1,0,0,tol=1e-3)
+wsum(pi,lik,0,nsamp-1,0,0,tol=1e-5)
+ws = rep(0,length(pi))
+lprobsum = c(0)
+add_to_wsum_direct(lprobsum, ws,pi,lik,0,nsamp-1)
+ws = rep(0,length(pi))
+lprobsum = c(0)
+add_to_wsum(lprobsum, ws,pi,lik,0,nsamp-1,0,0,tol=1e-5)
+ws
+
+wsum_direct(pi,lik,11,2000) # just check the functions are working ok for subsets that are not the whole data 
+wsum(pi,lik,11,2000,0,0,tol=1e-3)
+wsum(pi,lik,11,2000,0,0,tol=1e-5)
+ws = rep(0,length(pi))
+lprobsum = 0
+add_to_wsum(lprobsum, ws,pi,lik,11,2000,0,0,tol=1e-5)
+ws
+```
+Here we compare the compute times. If the tolerance is too tight then
+you get slower than simply directly summing. However, a weaker tolerance gives a substantial gain.
+```{r}
+tlik = t(lik)
+system.time(wsum_direct(pi,lik,0,nsamp-1))
+system.time(wsum(pi,lik,0,nsamp-1,0,0,tol=1e-3))
+system.time(wsum(pi,lik,0,nsamp-1,0,0,tol=1e-5))
+wsum=rep(0,length(pi))
+lprobsum = 0
+system.time(add_to_wsum(lprobsum,wsum,pi,lik,0,nsamp-1,0,0,tol=1e-5))
+```
+
+
+## Session information
+
+```{r info, echo = FALSE}
+```

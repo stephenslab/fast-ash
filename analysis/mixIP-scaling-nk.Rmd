@@ -1,0 +1,91 @@
+---
+title: "Scaling of mixIP with n and k"
+author: "Matthew Stephens"
+date: 2016-11-12
+---
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
+
+```{r read-chunk, include=FALSE, cache=FALSE}
+knitr::read_chunk("chunks.R")
+```
+
+```{r knitr-opts-chunk, include=FALSE}
+```
+
+
+## Overview
+
+Here we assess how the convex optimization in mixIP scales
+with n and k.
+
+
+## mixIP: Number of samples
+
+```{r}
+#define a function that calls the basic function to do mixIP in ash
+mixIP = function(lik,rtol=1e-6){
+  k = ncol(lik)
+  prior=rep(1,k)
+  prior[1]=10
+  n = nrow(lik)
+  init = ashr:::initpi(k,n,1)
+  ashr::mixIP(lik,prior,init,ashr:::set_control_mixIP(list(rtol=rtol)))
+}
+```
+
+Idea is to get a quick idea of how mixIP scales with number of samples:
+```{r}
+  timer_n = function(seed){
+    set.seed(seed)
+    z = rnorm(100000,0,2)
+    #gm = exp(seq(0.01,1,length=10)) # grid of multiplier
+    ll = ashr::ash(z,1,mixcompdist= "normal",outputlevel=4)
+    lik = ll$fit_details$matrix_lik
+    
+    time = list()
+    time[[1]] = system.time(mixIP(lik))
+    time[[2]] = system.time(mixIP(lik[1:10000,]))
+    time[[3]] = system.time(mixIP(lik[1:1000,]))
+    return(time)
+  }
+  timer_n(1)
+  timer_n(2)
+
+```
+
+quick conclusion: time is more than linear. We might benefit from,
+say, averaging results over subsets.
+
+## gridsizes
+
+```{r}
+ timer_k = function(seed){
+    set.seed(seed)
+    z = rnorm(10000,0,2)
+    #gm = exp(seq(0.01,1,length=10)) # grid of multiplier
+    ll = ashr::ash(z,1,mixcompdist= "normal", gridmult = 1.05, outputlevel=4)
+    lik = ll$fit_details$matrix_lik
+     time = list()
+     k = ncol(lik)
+    time[[1]] = system.time(mixIP(lik))
+    time[[2]] = system.time(mixIP(lik[,c(1,sample(2:k,round(k/2),replace=F))]))
+    time[[3]] = system.time(mixIP(lik[,c(1,sample(2:k,round(k/4),replace=F))]))
+    time[[4]] = system.time(mixIP(lik[,c(1,sample(2:k,round(k/8),replace=F))]))
+    return(time)
+  }
+  timer_k(1)
+  timer_k(2)
+```
+
+Rough conclusion: halving k almost halves time (but not quite), so we might do well to use dense grid on small n to get plausible
+grid values, and then narrow down for larger n.
+
+
+## Session information
+
+```{r session-info}
+```
+

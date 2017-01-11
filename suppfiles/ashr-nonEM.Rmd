@@ -1,0 +1,283 @@
+---
+title: "ashr non-EM benchmarking"
+author: "Kushal K Dey"
+date: "July 15, 2016"
+output: 
+  html_document:
+    css: floating-toc.css
+    toc: true
+---
+
+In this script, we benchmark some of the non-EM R codes in the Matthew's ashr package to Rcpp.
+
+```{r message=FALSE, warning=FALSE}
+Rcpp::sourceCpp("../R/autoselect_mixsd.cpp")
+Rcpp::sourceCpp("../R/gradient_check.cpp")
+Rcpp::sourceCpp("../R/log_compdens.cpp")
+Rcpp::sourceCpp("../R/matrix_dens_check.cpp")
+Rcpp::sourceCpp("../R/penloglik.cpp")
+```
+
+
+## autoselect_mixsd implementation
+
+```{r}
+autoselect.mixsd = function(betahat,sebetahat,mult){
+  sebetahat=sebetahat[sebetahat!=0] #To avoid exact measure causing (usually by mistake)
+  sigmaamin = min(sebetahat)/10 #so that the minimum is small compared with measurement precision
+  if(all(betahat^2<=sebetahat^2)){
+    sigmaamax = 8*sigmaamin #to deal with the occassional odd case where this could happen; 8 is arbitrary
+  }else{
+    sigmaamax = 2*sqrt(max(betahat^2-sebetahat^2)) #this computes a rough largest value you'd want to use, based on idea that sigmaamax^2 + sebetahat^2 should be at least betahat^2
+  }
+  if(mult==0){
+    return(c(0,sigmaamax/2))
+  }else{
+    npoint = ceiling(log2(sigmaamax/sigmaamin)/log2(mult))
+    return(mult^((-npoint):0) * sigmaamax)
+  }
+}
+
+betahat <- rnorm(1000000,0,1);
+sebetahat <- rchisq(1000000, 2);
+system.time(for(m in 1:10){mixsd1 <- autoselect.mixsd(betahat, sebetahat, sqrt(2))});
+system.time(for(m in 1:10){mixsd2 <- autoselect_mixsd(betahat, sebetahat, sqrt(2))});
+#all_true(betahat, sebetahat)
+max(abs(mixsd1 -  mixsd2))
+
+betahat <- rnorm(1000000,0,1);
+sebetahat <- rchisq(1000000, 2);
+library("ggplot2")
+tm <- microbenchmark::microbenchmark(
+    autoselect.mixsd= autoselect.mixsd(betahat, sebetahat, sqrt(2)),
+    autoselect_mixsd = autoselect_mixsd(betahat, sebetahat, sqrt(2)), times=100L)
+  
+autoplot(tm)
+
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+```
+
+## gradient implementation
+
+```{r}
+gradient = function(matrix_lik){
+  n = nrow(matrix_lik)
+  grad = n - colSums(matrix_lik/matrix_lik[,1])
+  return(grad)
+}
+matrix_lik <- matrix(rchisq(100000,2), ncol=1000);
+gr <- gradient(matrix_lik = matrix_lik)
+gr2 <- grad(matrix_lik)
+
+sum(abs(gr-gr2))
+
+library("ggplot2")
+tm <- microbenchmark::microbenchmark(
+            gr_current = gradient(matrix_lik = matrix_lik),
+            gr_rcpp = grad(matrix_lik = matrix_lik),
+            times=100L)
+
+autoplot(tm)
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+```
+
+
+### lfsr computation
+
+```{r}
+compute_lfsr = function(NegativeProb,ZeroProb){
+  ifelse(NegativeProb> 0.5*(1-ZeroProb),1-NegativeProb,NegativeProb+ZeroProb)
+}
+
+compute_lfsra = function(PositiveProb, NegativeProb,ZeroProb){
+  ifelse(PositiveProb<NegativeProb,2*PositiveProb+ZeroProb,2*NegativeProb+ZeroProb)
+}
+
+NegativeProb <- gtools::rdirichlet(1, rchisq(1000,4)); 
+ZeroProb <- gtools::rdirichlet(1, rchisq(1000,2));
+
+out1 <- compute_lfsr(NegativeProb = NegativeProb, ZeroProb = ZeroProb)
+out2 <- compute_lfsr_rcpp(NegativeProb = NegativeProb, ZeroProb = ZeroProb)
+sum(abs(out2-out1))
+
+library("ggplot2")
+tm <- microbenchmark::microbenchmark(
+    compute_lfsr = compute_lfsr(NegativeProb = NegativeProb, ZeroProb = ZeroProb),
+    compute_lfsr_rcpp = compute_lfsr_rcpp(NegativeProb = NegativeProb, ZeroProb = ZeroProb),
+    times=100L)
+  
+autoplot(tm)
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+
+NegativeProb <- gtools::rdirichlet(1, rchisq(1000,4)); 
+ZeroProb <- gtools::rdirichlet(1, rchisq(1000,2));
+PositiveProb <- gtools::rdirichlet(1, rchisq(1000,3));
+
+out1 <- compute_lfsra(PositiveProb = PositiveProb, NegativeProb = NegativeProb, ZeroProb = ZeroProb)
+out2 <- compute_lfsra_rcpp(PositiveProb=PositiveProb, NegativeProb = NegativeProb, ZeroProb = ZeroProb)
+sum(abs(out2-out1))
+  
+library("ggplot2")
+tm <- microbenchmark::microbenchmark(
+    compute_lfsra = compute_lfsra(PositiveProb = PositiveProb, NegativeProb = NegativeProb, ZeroProb = ZeroProb),
+    compute_lfsra_rcpp = compute_lfsra_rcpp(PositiveProb=PositiveProb, NegativeProb = NegativeProb, ZeroProb = ZeroProb),
+    times=100L)
+
+autoplot(tm)
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+  
+```
+
+## log-compdens computation
+
+```{r}
+normalmix = function(pi,mean,sd){
+  structure(data.frame(pi,mean,sd),class="normalmix")
+}
+
+m <- normalmix(c(0.5,0.5),c(0,0),c(1,2))
+
+ncomp = function(m){
+  UseMethod("ncomp")
+}
+
+ncomp.default = function(m){
+  return(length(m$pi))
+}
+
+compdens.normalmix = function(m,y,log=FALSE){
+  k=ncomp(m)
+  n=length(y)
+  d = matrix(rep(y,rep(k,n)),nrow=k)
+  return(matrix(stats::dnorm(d, m$mean, m$sd, log),nrow=k))
+}
+
+compdens.normalmix(m, c(3,6,9), log=FALSE)
+
+log_compdens_conv.normalmix = function(m,x,s,v,FUN="+"){
+  if(!is.null(v)){
+    stop("method compdens_conv of normal mixture not written for df!=NULL")
+  }
+  if(length(s)==1){s=rep(s,length(x))}
+  sdmat = sqrt(outer(s^2,m$sd^2,FUN)) #n by k matrix of standard deviations of convolutions
+  return(t(stats::dnorm(outer(x,m$mean,FUN="-")/sdmat,log=TRUE) - log(sdmat)))
+}
+
+
+log_compdens_conv.normalmix = function(m,x,s,v,FUN="+"){
+  if(!is.null(v)){
+    stop("method compdens_conv of normal mixture not written for df!=NULL")
+  }
+  if(length(s)==1){s=rep(s,length(x))}
+  sdmat = sqrt(outer(s^2,m$sd^2,FUN)) #n by k matrix of standard deviations of convolutions
+    return(t(stats::dnorm(outer(x,m$mean,FUN="-")/sdmat,log=TRUE) - log(sdmat)))
+}
+
+log_compdens_conv.normalmix2 = function(m,x,s,v,FUN="+", n_threads){
+  if(!is.null(v)){
+    stop("method compdens_conv of normal mixture not written for df!=NULL")
+  }
+  if(length(s)==1){s=rep(s,length(x))}
+    return(log_compdens_conv_normalmix(m$mean, m$sd, x, s, n_threads))
+}
+
+betahat <- rnorm(100000,0,1);
+sebetahat <- rchisq(100000, 2);
+
+out1 <- log_compdens_conv.normalmix(m, betahat, sebetahat, v=NULL, FUN="+")
+out2 <- log_compdens_conv.normalmix2(m, betahat, sebetahat, v=NULL, FUN="+", n_threads=1)
+
+sum(abs(out1-out2))
+
+
+library("ggplot2")
+  tm <- microbenchmark::microbenchmark(
+      logcompdens1 = log_compdens_conv.normalmix(m, betahat, sebetahat, v=NULL, FUN="+"),
+      logcompdens2 = log_compdens_conv.normalmix2(m, betahat, sebetahat, v=NULL, FUN="+", n_threads=4),
+      times=100L)
+  
+autoplot(tm)
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+  
+```
+
+## matrix-dens computation
+
+```{r}
+betahat <- rnorm(1000,1,2);
+sebetahat <- rchisq(1000,4);
+sigmaavec <- rchisq(100,2);
+tt2 <- sqrt(outer(sebetahat^2,sigmaavec^2,FUN="+"))
+out2 <- dnorm(betahat,0, tt2)
+
+
+matrix_dens = function(betahat, sebetahat, sigmaavec){
+  k = length(sigmaavec)
+  n = length(betahat)
+  ldens = stats::dnorm(betahat,0,sqrt(outer(sebetahat^2,sigmaavec^2,FUN="+")),log=TRUE)
+  maxldens = apply(ldens, 1, max)
+  ldens = ldens - maxldens
+  return(exp(ldens))
+}
+
+out1 <- matrix_dens(betahat, sebetahat, sigmaavec);
+out2 <- matrix_dens_rcpp(betahat, sebetahat, sigmaavec);
+
+sum(abs(out1-out2))
+
+library("ggplot2")
+tm <- microbenchmark::microbenchmark(
+  matrix_dens = matrix_dens(betahat, sebetahat, sigmaavec),
+  matrix_dens_rcpp = matrix_dens_rcpp(betahat, sebetahat, sigmaavec),
+  times=100L)
+
+autoplot(tm)
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+
+```
+
+## penloglik computation
+
+```{r}
+normalize = function(x){return(x/sum(x))}
+
+penloglik = function(pi, matrix_lik, prior){
+  pi = normalize(pmax(0,pi))
+  m  = t(pi * t(matrix_lik)) # matrix_lik is n by k; so this is also n by k
+  m.rowsum = rowSums(m)
+  loglik = sum(log(m.rowsum))
+  subset = (prior != 1.0)
+  priordens = sum((prior-1)[subset]*log(pi[subset]))
+  return(loglik+priordens)
+}
+
+prior <- rep(1,1000);
+pi_est <- gtools::rdirichlet(1, rchisq(1000,4));
+matrix_lik <- matrix(rchisq(100000,2), ncol=1000);
+
+out1 <- penloglik(pi_est, matrix_lik, prior)
+out2 <- penloglik_rcpp(pi_est, matrix_lik, prior)
+
+out2-out1
+
+library("ggplot2")
+tm <- microbenchmark::microbenchmark(
+  penloglik = penloglik(pi_est, matrix_lik, prior),
+  penloglik_rcpp = penloglik_rcpp(pi_est, matrix_lik, prior),
+  times=100L)
+
+autoplot(tm)
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+
+
+library("ggplot2")
+  tm <- microbenchmark::microbenchmark(
+      normalize = normalize(prior),
+      normalize2 = normalize2(prior),
+      times=100L)
+  
+autoplot(tm)
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+  
+```
+

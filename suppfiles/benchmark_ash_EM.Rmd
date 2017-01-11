@@ -1,0 +1,71 @@
+---
+title: "ash EM implementation Benchmarking"
+author: "Kushal K Dey"
+date: "July 15, 2016"
+output: html_document
+---
+
+```{r warning=FALSE, message=FALSE}
+Rcpp::sourceCpp("../R/cxxmixsquarem.cpp")
+Rcpp::sourceCpp("../R/cxxmixsquarem2.cpp")
+```
+
+```{r}
+prior <- rep(1,10000);
+pi_est <- gtools::rdirichlet(1, rchisq(10000,4));
+matrix_lik <- matrix(rchisq(1000000,2), ncol=10000);
+dim(matrix_lik)
+control.default=list(K = 1, method=3, square=TRUE, 
+                     step.min0=1, step.max0=1, mstep=4, kr=1, 
+                     objfn.inc=1,tol=1.e-07, maxiter=500, trace=FALSE)
+system.time(for(m in 1:1){
+  ll4 <- cxxMixSquarem(matrix_lik, prior, pi_init=pi_est, control=control.default)
+})
+
+system.time(for(m in 1:1){
+  ll5 <- cxxMixSquarem2(matrix_lik, prior, pi_init=pi_est, control=control.default)
+})
+
+mean(abs(ll4$pihat - ll5$pihat))
+
+library("ggplot2")
+tm <- microbenchmark::microbenchmark(
+    cxxEM= cxxMixSquarem(matrix_lik, prior, pi_init=pi_est, control=control.default),
+    cxxEM2thread4 = cxxMixSquarem2(matrix_lik, prior, pi_init=pi_est, control=control.default, n_threads=4), 
+    cxxEM2thread1 = cxxMixSquarem2(matrix_lik, prior, pi_init=pi_est, control=control.default, n_threads=1),
+    times=50L)
+  
+autoplot(tm)
+
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+```
+
+```{r}
+prior <- rep(1,100);
+pi_est <- gtools::rdirichlet(1, rchisq(100,4));
+matrix_lik <- matrix(rchisq(1000000,2), ncol=100);
+dim(matrix_lik)
+control.default=list(K = 1, method=3, square=TRUE, 
+                     step.min0=1, step.max0=1, mstep=4, kr=1, 
+                     objfn.inc=1,tol=1.e-07, maxiter=500, trace=FALSE)
+system.time(for(m in 1:1){
+  ll4 <- cxxMixSquarem(matrix_lik, prior, pi_init=pi_est, control=control.default)
+})
+
+system.time(for(m in 1:1){
+  ll5 <- cxxMixSquarem2(matrix_lik, prior, pi_init=pi_est, control=control.default)
+})
+
+mean(abs(ll4$pihat - ll5$pihat))
+
+library("ggplot2")
+tm <- microbenchmark::microbenchmark(
+    cxxEM= cxxMixSquarem(matrix_lik, prior, pi_init=pi_est, control=control.default),
+    cxxEM2thread4 = cxxMixSquarem2(matrix_lik, prior, pi_init=pi_est, control=control.default, n_threads=4), 
+    cxxEM2thread1 = cxxMixSquarem2(matrix_lik, prior, pi_init=pi_est, control=control.default, n_threads=1),
+    times=50L)
+  
+autoplot(tm)
+
+qplot(y=time, data=tm, colour=expr) + scale_y_log10()
+```
