@@ -90,5 +90,5 @@ system.time(add_to_wsum(lprobsum,wsum,pi,lik,0,nsamp-1,0,0,tol=1e-5))
 
 ## Session information
 
-```{r info, echo = FALSE}
+```{r session-info, echo = FALSE}
 ```
