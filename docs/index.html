@@ -188,7 +188,7 @@ $(document).ready(function () {
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/jdblischak/workflowr">
+  <a href="https://github.com/stephenslab/fast-ash">
     <span class="fa fa-github"></span>
      
   </a>
@@ -207,6 +207,10 @@ $(document).ready(function () {
 </div>
 
 
+<div id="preamble" class="section level1">
+<h1>Preamble</h1>
+<p>If you want to run the rmd files in this repo, start by running <code>R CMD BATCH make_example_big_data.R</code> in the <code>code</code> directory. This will produce a file used for testing later.</p>
+</div>
 <div id="background" class="section level1">
 <h1>Background</h1>
 <p>The Adaptive Shrinkage method in (<a href="http://biorxiv.org/content/early/2016/06/08/038216" class="uri">http://biorxiv.org/content/early/2016/06/08/038216</a>) involves solving a convex optimization problem. Currently in my <a href="http://github.com/stephens999/ashr">R package</a> I use either an accelerated EM algorithm or an Interior Point (IP) method to solve this problem. (The interior point method uses the <code>REBayes</code> package function <code>KWdual</code> which interfaces with the <code>mosek</code> library.) Both EM and IP are quite quick enough for single data sets, even quite large ones (e.g. <span class="math inline">\(10^6\)</span> observations) but in some applications (e.g. matrix factorization) we want to run this algorithm hundreds or thousands of times. So we seek to speed it up.</p>
@@ -215,8 +219,8 @@ $(document).ready(function () {
 <h1>Make sure we are solving the right problem</h1>
 <p>The R package software actually involves three steps.</p>
 <ul>
-<li><p>compute an <span class="math inline">\(n \times k\)</span> likelihood matrix <span class="math inline">\(L\)</span>.</p></li>
-<li><p>estimate mixture proportions <span class="math inline">\(\pi_1,\dots,\pi_k\)</span> by maximizing <span class="math inline">\(\sum_j \log \sum_k \pi_k L_{jk}\)</span>, which is the convex optimization problem.</p></li>
+<li><p>compute an <span class="math inline">\(n \times k\)</span> likelihood matrix <span class="math inline">\(L\)</span>. Specifically <span class="math inline">\(L\)</span> is based on a normal likelihood so <span class="math display">\[L_{jk} = (s_j^2 + \sigma_k^2)^{-0.5} \exp[-0.5 x_j^2/(s_j^2 + \sigma_k^2)].\]</span> where <span class="math inline">\(s_j, x_j\)</span> are known data, and <span class="math inline">\(\sigma_1,\dots,\sigma_K\)</span> are increasing from small to large.</p></li>
+<li><p>estimate mixture proportions <span class="math inline">\(\pi_1,\dots,\pi_k\)</span> by maximizing <span class="math display">\[f(\pi) = \sum_j \log \sum_k \pi_k L_{jk}.\]</span> This is the convex optimization problem.</p></li>
 <li><p>compute posterior quantities given these mixture proportions.</p></li>
 </ul>
 <p>All 3 steps take some time, but my expectation is that convex optimization step is taking most of the time. In <a href="ash_stages.html">this vignette</a> I made a quick assessment of how these three stages break down to make sure this expectation is correct. In fact thet last step (compute posterior quantities) also takes non-trivial time for large data sets. However, I believe this is due to some inefficiencies in the current implementation that would not be too hard to fix. I therefore focus on speeding up the optimization.</p>
@@ -228,12 +232,36 @@ $(document).ready(function () {
 <li>I understand it; the IP method is basically a black box to me at present.
 <ul>
 <li>In particular I understand that we can reduce iterations by improvinging initalization, which is unclear to me for IP.</li>
-<li>And we can easily do just a few iterations of EM to improve the result without iterating to convergence. This may be relevant when running the method many times iteratively, where it may not pay to run the method to full convergence every iteration. + Possibly the above are also true of IP but I don’t actually know. Honestly, I don’t even know how to set the starting point in ‘REBayes::KWDual’.</li>
+<li>And we can easily do just a few iterations of EM to improve the result without iterating to convergence. This may be relevant when running the method many times iteratively, where it may not pay to run the method to full convergence every iteration. + Possibly the above are also true of IP but I don’t actually know. Honestly, I don’t even know how to set the starting point in <code>REBayes::KWDual</code>.</li>
 </ul></li>
 <li>The EM code is <em>very</em> simple</li>
 </ul>
-<p>For this reason I start by working with EM. Hopefully things we learn there might also translate to the IP method.</p>
+<p>For this reason I start by working with EM. Hopefully things we learn there might also translate to the IP method. We can return to this in the future.</p>
 <p>For future reference: I did do some quick assessments of how IP scales with <span class="math inline">\(n\)</span> and <span class="math inline">\(k\)</span> <a href="mixIP-scaling-nk.html">here</a>. This suggests that scaling exceeds linear cost, particularly for <span class="math inline">\(n\)</span>, presumably because the number of iterations needed increases with <span class="math inline">\(n\)</span>.</p>
+</div>
+<div id="speeding-em-by-kd-tree-like-methods" class="section level1">
+<h1>Speeding EM by kd-tree like methods</h1>
+<p>Peter Carbonetto suggested we use kd trees to speed up EM calculations, and pointed me to <a href="http://www.cs.cmu.edu/~psand">this paper</a>. Based on this I came up with the following strategy.</p>
+<p>First, lets simplify the case to where the <span class="math inline">\(s_j\)</span> are all equal (wlog, to 1 say). So <span class="math display">\[L_{jk} = (1 + \sigma_k^2)^{-0.5} \exp[-0.5 x_j^2/(1 + \sigma_k^2)].\]</span> And let us assume that <span class="math inline">\(x_j\)</span> are sorted to be increasing in absolute value. In this case <span class="math inline">\(x_j, x_{j+1}\)</span> will often be similar to one another, and so <span class="math inline">\(L_{j \cdot}\)</span> and <span class="math inline">\(L_{j+1 \cdot}\)</span> will often be similar. We can exploit this in the EM algorithm as follows.</p>
+<p>First, let <span class="math display">\[w_{j k}(\pi): = \pi_k L_{jk} / \sum_k (\pi_k L_{jk})\]</span> These quantities are sometimes called the “responsibilies” in machine learning literature. Each EM iteration involves summing the responsibilities for the current value of <span class="math inline">\(\pi\)</span> to compute a new value for <span class="math inline">\(\pi\)</span> (<span class="math inline">\(\hat{\pi}\)</span>):</p>
+<p><span class="math display">\[\hat{\pi}_k = (1/n) \sum_{j=1}^n w_{jk}(\pi)\]</span></p>
+<p>The basic idea is: 1. if many rows of <span class="math inline">\(w\)</span> are similar we can avoid summing them all. 2. if rows <span class="math inline">\(a\)</span> and <span class="math inline">\(b\)</span> of <span class="math inline">\(w\)</span> are similar then so will be all rows in between (because of the sorting step).</p>
+<p>An assessment of how similar the nearby rows tend to be is given <a href="ash_z_pi_changes.html">here</a>.</p>
+<p>This suggests the following algorithm (in pseudocode) to sum from row <span class="math inline">\(a\)</span> to <span class="math inline">\(b\)</span> of <span class="math inline">\(w\)</span>:</p>
+<pre class="r"><code>function wsum(w,a,b): 
+
+if(w[a,] similar to w[b,]) 
+  return (b-a+1) * (w[a,]+w[b,])/2 
+else 
+  return wsum(w,a,c) + wsum(w,c+1,b) </code></pre>
+<p>This is what I implemented in <a href="fast_ash.cpp" class="uri">fast_ash.cpp</a>. (The function <code>wsum</code>).</p>
+<p>A similar idea can be applied to also compute the objective function at the same time as performing the EM updates. The function <code>add_to_wsum</code> does this. (Since we want to return 2 things now it passes these quantitees by reference to help this.)</p>
+<p>In developing this, testing, and trying to get this to run fast I</p>
+<ul>
+<li><a href="test_mmult.html">compare speed of matrix multiplication functions</a></li>
+<li><a href="test_rcpp.html">check and compare results of wsum with naively summing</a></li>
+<li><a href="test_fix_point.html">check and compare resulting new EM with existing EM</a></li>
+</ul>
 </div>
 
 <hr>
