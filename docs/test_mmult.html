@@ -289,7 +289,7 @@ div.tocify {
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/jdblischak/workflowr">
+  <a href="https://github.com/stephenslab/fast-ash">
     <span class="fa fa-github"></span>
      
   </a>
@@ -310,8 +310,8 @@ div.tocify {
 </div>
 
 
-<p><strong>Last updated:</strong> 2017-01-11</p>
-<p><strong>Code version:</strong> c4328e697b7b4a78e368219c72e4df96c5614890</p>
+<p><strong>Last updated:</strong> 2017-01-15</p>
+<p><strong>Code version:</strong> 086c3157516dcce3907fd3fd6857a0aec1f35bfa</p>
 <div id="outline" class="section level2">
 <h2>Outline</h2>
 <p>This document simply checks speed of some approaches to vector-matrix multiplication, based on code at [<a href="http://stackoverflow.com/questions/18349053/fastest-way-for-multiplying-a-matrix-to-a-vector" class="uri">http://stackoverflow.com/questions/18349053/fastest-way-for-multiplying-a-matrix-to-a-vector</a>] and also comparing to method used in current ash code.</p>
@@ -327,14 +327,41 @@ identical(mmult1(v,mat),mmult(mat,v))</code></pre>
 <pre class="r"><code>m &lt;- microbenchmark( mmult1( v , mat ) , mmult(mat,v), sweep(mat, 2, v, FUN = &quot;*&quot;) , t( t(mat) * v ) , times = 100L )
   print( m , &quot;relative&quot; , order = &quot;median&quot; , digits = 3 )</code></pre>
 <pre><code>Unit: relative
-                        expr   min    lq  mean median    uq   max neval
-               mmult(mat, v)  1.00  1.00  1.00   1.00  1.00  1.00   100
-              mmult1(v, mat)  3.64  3.35  3.76   3.26  3.24  7.36   100
-               t(t(mat) * v) 14.79 13.49 15.47  13.59 16.84 40.14   100
- sweep(mat, 2, v, FUN = &quot;*&quot;) 21.35 18.77 20.69  19.22 21.55 41.99   100</code></pre>
+                        expr   min    lq  mean median    uq  max neval
+               mmult(mat, v)  1.00  1.00  1.00   1.00  1.00  1.0   100
+              mmult1(v, mat)  3.69  3.63  4.14   3.59  3.36 10.0   100
+               t(t(mat) * v) 14.74 14.85 16.04  15.51 16.22 16.8   100
+ sweep(mat, 2, v, FUN = &quot;*&quot;) 20.90 20.96 21.70  21.15 20.54 67.8   100</code></pre>
 </div>
 <div id="session-information" class="section level2">
 <h2>Session information</h2>
+<pre><code>R version 3.3.1 (2016-06-21)
+Platform: x86_64-apple-darwin13.4.0 (64-bit)
+Running under: OS X 10.11.5 (El Capitan)
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] microbenchmark_1.4-2.1 ashr_2.1               workflowr_0.2.0       
+[4] rmarkdown_1.3         
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_0.12.8       rstudioapi_0.6    knitr_1.15.1     
+ [4] magrittr_1.5      REBayes_0.73      MASS_7.3-45      
+ [7] munsell_0.4.3     doParallel_1.0.10 pscl_1.4.9       
+[10] colorspace_1.2-7  SQUAREM_2016.8-2  lattice_0.20-34  
+[13] foreach_1.4.3     plyr_1.8.4        stringr_1.1.0    
+[16] tools_3.3.1       parallel_3.3.1    grid_3.3.1       
+[19] gtable_0.2.0      git2r_0.18.0      htmltools_0.3.5  
+[22] iterators_1.0.8   assertthat_0.1    yaml_2.1.14      
+[25] rprojroot_1.1     digest_0.6.10     Matrix_1.2-7.1   
+[28] ggplot2_2.1.0     codetools_0.2-15  evaluate_0.10    
+[31] stringi_1.1.2     scales_0.4.0      Rmosek_7.1.2     
+[34] backports_1.0.4   truncnorm_1.0-7  </code></pre>
 </div>
 
 <hr>

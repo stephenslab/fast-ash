@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Matthew Stephens" />
+
+<meta name="date" content="2017-01-15" />
+
+<title>An examination of how EM converges</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+<link href="site_libs/font-awesome-4.5.0/css/font-awesome.min.css" rel="stylesheet" />
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Fast ash</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/stephenslab/fast-ash">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">An examination of how EM converges</h1>
+<h4 class="author"><em>Matthew Stephens</em></h4>
+<h4 class="date"><em>2017-01-15</em></h4>
+
+</div>
+
+
+<p><strong>Last updated:</strong> 2017-01-15</p>
+<p><strong>Code version:</strong> 086c315</p>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<p>I’m interested to see if the convergence of the EM algorithm is predictable in a way that might help improve extrapolation.</p>
+<pre class="r"><code>one_step_ash = function(betahat, sebetahat, g,mixcompdist=&quot;normal&quot;,...){
+  ashr::ash.workhorse(betahat, sebetahat, g=g, optmethod = &quot;mixEM&quot;, mixcompdist=mixcompdist, control  = list(maxiter=1), ...)
+  
+}</code></pre>
+<p>Set up some simulations and the optimum</p>
+<pre class="r"><code>  library(&quot;ashr&quot;)
+  set.seed(1)
+  df = trunc(10*runif(1000))+1 # ranges from 1 to 10
+  m = rgamma(1000,1,1)
+  tt = m*rt(1000, df=df) + rnorm(1000)
+  tt.ash = ash(tt,1,gridmult=1.01, mixcompdist=&quot;normal&quot;)</code></pre>
+<pre class="r"><code>  start = 1e-8 # the very small initial value to start from
+  g_init = get_fitted_g(tt.ash)
+  K = length(g_init$pi)
+  pi_init = c(1-(K-1)*start,rep(start,K-1))
+  g_init$pi = pi_init 
+  tt.1 = one_step_ash(tt,1, g_init)</code></pre>
+<pre><code>Warning in estimate_mixprop(data, g, prior, optmethod = optmethod, control
+= control): Optimization failed to converge. Results may be unreliable. Try
+increasing maxiter and rerunning.</code></pre>
+<pre class="r"><code>  g_init$pi = get_fitted_g(tt.1)$pi
+  tt.2 = one_step_ash(tt,1, g_init)</code></pre>
+<pre><code>Warning in estimate_mixprop(data, g, prior, optmethod = optmethod, control
+= control): Optimization failed to converge. Results may be unreliable. Try
+increasing maxiter and rerunning.</code></pre>
+<pre class="r"><code>  g_init$pi = get_fitted_g(tt.2)$pi
+  tt.3 = one_step_ash(tt,1, g_init)</code></pre>
+<pre><code>Warning in estimate_mixprop(data, g, prior, optmethod = optmethod, control
+= control): Optimization failed to converge. Results may be unreliable. Try
+increasing maxiter and rerunning.</code></pre>
+<pre class="r"><code>  g_init$pi = get_fitted_g(tt.3)$pi
+  tt.4 = one_step_ash(tt,1, g_init)</code></pre>
+<pre><code>Warning in estimate_mixprop(data, g, prior, optmethod = optmethod, control
+= control): Optimization failed to converge. Results may be unreliable. Try
+increasing maxiter and rerunning.</code></pre>
+<p>Look at which components are increasing:</p>
+<pre class="r"><code>  which(tt.ash$fitted_g$pi&gt;start)</code></pre>
+<pre><code> [1]   1 296 297 298 299 300 378 379 380 381 497 498</code></pre>
+<pre class="r"><code>  which(tt.1$fitted_g$pi &gt; pi_init)</code></pre>
+<pre><code>  [1] 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129
+ [18] 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146
+ [35] 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163
+ [52] 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180
+ [69] 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197
+ [86] 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214
+[103] 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231
+[120] 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248
+[137] 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265
+[154] 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282
+[171] 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299
+[188] 300 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316
+[205] 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333
+[222] 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350
+[239] 351 352 353 354 355 356 357 358 359 360 361 362 363 364 365 366 367
+[256] 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384
+[273] 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 400 401
+[290] 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418
+[307] 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435
+[324] 436 437 438 439 440 441 442 443 444 445 446 447 448 449 450 451 452
+[341] 453 454 455 456 457 458 459 460 461 462 463 464 465 466 467 468 469
+[358] 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486
+[375] 487 488 489 490 491 492 493 494 495 496 497 498 499 500 501 502 503
+[392] 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520
+[409] 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537
+[426] 538 539 540 541 542 543 544 545 546 547 548 549 550 551 552 553 554
+[443] 555 556 557 558 559 560 561 562 563 564 565 566 567 568 569 570 571
+[460] 572 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588
+[477] 589 590 591 592 593 594 595 596 597 598 599 600 601 602 603 604 605
+[494] 606 607 608 609 610 611 612 613 614 615 616 617 618 619 620 621 622
+[511] 623 624 625 626 627 628 629 630 631 632 633 634 635 636 637 638 639
+[528] 640 641 642 643 644 645 646 647 648</code></pre>
+<pre class="r"><code>  which(tt.2$fitted_g$pi &gt; tt.1$fitted_g$pi)</code></pre>
+<pre><code>  [1] 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175
+ [18] 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192
+ [35] 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209
+ [52] 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226
+ [69] 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243
+ [86] 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260
+[103] 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277
+[120] 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294
+[137] 295 296 297 298 299 300 301 302 303 304 305 306 307 308 309 310 311
+[154] 312 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328
+[171] 329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345
+[188] 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362
+[205] 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379
+[222] 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396
+[239] 397 398 399 400 401 402 403 404 405 406 407 408 409 410 411 412 413
+[256] 414 415 416 417 418 419 420 421 422 423 424 425 426 427 428 429 430
+[273] 431 432 433 434 435 436 437 438 439 440 441 442 443 444 445 446 447
+[290] 448 449 450 451 452 453 454 455 456 457 458 459 460 461 462 463 464
+[307] 465 466 467 468 469 470 471 472 473 474 475 476 477 478 479 480 481
+[324] 482 483 484 485 486 487 488 489 490 491 492 493 494 495 496 497 498</code></pre>
+<pre class="r"><code>  which(tt.3$fitted_g$pi &gt; tt.2$fitted_g$pi) </code></pre>
+<pre><code>  [1] 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171
+ [18] 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188
+ [35] 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205
+ [52] 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222
+ [69] 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239
+ [86] 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256
+[103] 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273
+[120] 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290
+[137] 291 292 293 294 295 296 297 298 299 300 301 302 303 304 305 306 307
+[154] 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324
+[171] 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341
+[188] 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358
+[205] 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375
+[222] 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392
+[239] 393 394 395 396 397 398 399 400 401 402 403 404 405 406 407 408 409
+[256] 410 411 412 413 414 415 416 417 418 419 420 421 422 423 424 425 426
+[273] 427 428 429 430 431 432 433 434 435 436 437</code></pre>
+<pre class="r"><code>  which(tt.4$fitted_g$pi &gt; tt.3$fitted_g$pi) </code></pre>
+<pre><code>  [1] 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171
+ [18] 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188
+ [35] 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205
+ [52] 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222
+ [69] 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239
+ [86] 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256
+[103] 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273
+[120] 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290
+[137] 291 292 293 294 295 296 297 298 299 300 301 302 303 304 305 306 307
+[154] 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324
+[171] 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341
+[188] 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358
+[205] 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375
+[222] 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392
+[239] 393 394 395 396 397 398 399 400 401 402 403 404 405 406 407 408 409
+[256] 410 411 412 413</code></pre>
+<p>So it seems that many components are increasing each iteration even in this early iteration, and not only the ones that end up being substantial.</p>
+<div id="session-information" class="section level2">
+<h2>Session Information</h2>
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 3.3.1 (2016-06-21)
+Platform: x86_64-apple-darwin13.4.0 (64-bit)
+Running under: OS X 10.11.5 (El Capitan)
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] ashr_2.1        workflowr_0.2.0 rmarkdown_1.3  
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_0.12.8       rstudioapi_0.6    knitr_1.15.1     
+ [4] magrittr_1.5      REBayes_0.73      MASS_7.3-45      
+ [7] doParallel_1.0.10 pscl_1.4.9        SQUAREM_2016.8-2 
+[10] lattice_0.20-34   foreach_1.4.3     stringr_1.1.0    
+[13] tools_3.3.1       parallel_3.3.1    grid_3.3.1       
+[16] git2r_0.18.0      htmltools_0.3.5   iterators_1.0.8  
+[19] assertthat_0.1    yaml_2.1.14       rprojroot_1.1    
+[22] digest_0.6.10     Matrix_1.2-7.1    codetools_0.2-15 
+[25] evaluate_0.10     stringi_1.1.2     Rmosek_7.1.2     
+[28] backports_1.0.4   truncnorm_1.0-7  </code></pre>
+</div>
+</div>
+
+<hr>
+<p>
+    This site was created with <a href="http://rmarkdown.rstudio.com">R Markdown</a>
+</p>
+<hr>
+
+<!-- To enable disqus, uncomment the section below and provide your disqus_shortname -->
+
+<!-- disqus
+  <div id="disqus_thread"></div>
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'rmarkdown'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+-->
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

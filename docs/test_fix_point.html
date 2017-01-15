@@ -289,7 +289,7 @@ div.tocify {
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/jdblischak/workflowr">
+  <a href="https://github.com/stephenslab/fast-ash">
     <span class="fa fa-github"></span>
      
   </a>
@@ -310,8 +310,8 @@ div.tocify {
 </div>
 
 
-<p><strong>Last updated:</strong> 2017-01-11</p>
-<p><strong>Code version:</strong> c4328e697b7b4a78e368219c72e4df96c5614890</p>
+<p><strong>Last updated:</strong> 2017-01-15</p>
+<p><strong>Code version:</strong> 086c3157516dcce3907fd3fd6857a0aec1f35bfa</p>
 <div id="outline" class="section level2">
 <h2>Outline</h2>
 <p>I want to try incorporating the multi-resolution ideas from <code>fast_ash.cpp</code> into the fix point function in <code>MixSquarem.cpp</code>.</p>
@@ -358,10 +358,10 @@ $objfn
 [1] 57641.21</code></pre>
 <pre class="r"><code>system.time(fixptfn(pi,lik,prior))</code></pre>
 <pre><code>   user  system elapsed 
-  0.392   0.024   0.426 </code></pre>
+  0.403   0.013   0.420 </code></pre>
 <pre class="r"><code>system.time(fixptfn(pi,lik,prior,tol=1e-8))</code></pre>
 <pre><code>   user  system elapsed 
-  0.010   0.002   0.011 </code></pre>
+  0.016   0.002   0.019 </code></pre>
 <pre class="r"><code># This is closer to the usual initial value we use in ash
 normalize=function(x){x/sum(x)}
 pi = rep(1/nsamp, ncomp(fitted_g))
@@ -371,11 +371,11 @@ pi = normalize(pi)
 control$multiscale_tol=0
 system.time(EM0&lt;-cxxMixSquarem(lik,prior,pi,control))</code></pre>
 <pre><code>   user  system elapsed 
-154.131   5.367 161.195 </code></pre>
+162.368   5.755 169.487 </code></pre>
 <pre class="r"><code>control$multiscale_tol=1e-5
 system.time(EM5&lt;-cxxMixSquarem(lik,prior,pi,control))</code></pre>
 <pre><code>   user  system elapsed 
-  1.307   1.528   2.856 </code></pre>
+  1.573   1.897   3.513 </code></pre>
 <pre class="r"><code>EM0</code></pre>
 <pre><code>$pihat
  [1] 1.987464e-14 0.000000e+00 6.812328e-18 8.659740e-20 8.775203e-18
@@ -409,6 +409,30 @@ $converged
 </div>
 <div id="session-information" class="section level2">
 <h2>Session information</h2>
+<pre><code>R version 3.3.1 (2016-06-21)
+Platform: x86_64-apple-darwin13.4.0 (64-bit)
+Running under: OS X 10.11.5 (El Capitan)
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] ashr_2.1        workflowr_0.2.0 rmarkdown_1.3  
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_0.12.8       rstudioapi_0.6    knitr_1.15.1     
+ [4] magrittr_1.5      REBayes_0.73      MASS_7.3-45      
+ [7] doParallel_1.0.10 pscl_1.4.9        SQUAREM_2016.8-2 
+[10] lattice_0.20-34   foreach_1.4.3     stringr_1.1.0    
+[13] tools_3.3.1       parallel_3.3.1    grid_3.3.1       
+[16] git2r_0.18.0      htmltools_0.3.5   iterators_1.0.8  
+[19] assertthat_0.1    yaml_2.1.14       rprojroot_1.1    
+[22] digest_0.6.10     Matrix_1.2-7.1    codetools_0.2-15 
+[25] evaluate_0.10     stringi_1.1.2     Rmosek_7.1.2     
+[28] backports_1.0.4   truncnorm_1.0-7  </code></pre>
 </div>
 
 <hr>
