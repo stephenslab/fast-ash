@@ -1,0 +1,71 @@
+---
+title: "An examination of how EM converges"
+author: "Matthew Stephens"
+date: 2017-01-15
+output: html_document
+---
+
+```{r read-chunk, include=FALSE, cache=FALSE}
+knitr::read_chunk("chunks.R")
+```
+
+```{r knitr-opts-chunk, include=FALSE}
+```
+
+**Last updated:** `r Sys.Date()`
+
+**Code version:** `r workflowr::extract_commit(".", 1)$sha1`
+
+
+# Background
+
+I'm interested to see if the convergence of the EM algorithm is predictable
+in a way that might help improve extrapolation.
+
+```{r}
+one_step_ash = function(betahat, sebetahat, g,mixcompdist="normal",...){
+  ashr::ash.workhorse(betahat, sebetahat, g=g, optmethod = "mixEM", mixcompdist=mixcompdist, control  = list(maxiter=1), ...)
+  
+}
+```
+
+Set up some simulations and the optimum
+```{r}
+  library("ashr")
+  set.seed(1)
+  df = trunc(10*runif(1000))+1 # ranges from 1 to 10
+  m = rgamma(1000,1,1)
+  tt = m*rt(1000, df=df) + rnorm(1000)
+  tt.ash = ash(tt,1,gridmult=1.01, mixcompdist="normal")
+```
+
+```{r}
+  start = 1e-8 # the very small initial value to start from
+  g_init = get_fitted_g(tt.ash)
+  K = length(g_init$pi)
+  pi_init = c(1-(K-1)*start,rep(start,K-1))
+  g_init$pi = pi_init 
+  tt.1 = one_step_ash(tt,1, g_init)
+  g_init$pi = get_fitted_g(tt.1)$pi
+  tt.2 = one_step_ash(tt,1, g_init)
+  g_init$pi = get_fitted_g(tt.2)$pi
+  tt.3 = one_step_ash(tt,1, g_init)
+  g_init$pi = get_fitted_g(tt.3)$pi
+  tt.4 = one_step_ash(tt,1, g_init)
+```
+Look at which components are increasing:
+```{r}
+  which(tt.ash$fitted_g$pi>start)
+  which(tt.1$fitted_g$pi > pi_init)
+  which(tt.2$fitted_g$pi > tt.1$fitted_g$pi)
+  which(tt.3$fitted_g$pi > tt.2$fitted_g$pi) 
+  which(tt.4$fitted_g$pi > tt.3$fitted_g$pi) 
+```
+So it seems that many components are increasing each iteration even
+in this early iteration, and not only the ones that end up being substantial.
+
+
+## Session Information
+
+```{r session-info}
+```
