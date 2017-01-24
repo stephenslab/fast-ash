@@ -1,73 +1,31 @@
 ---
-title: "Small demo of interior-point solver"
+title: "Unconstrained optimization for fitting adaptive shrinkage model"
 author: "Peter Carbonetto"
 date: "2017-01-24"
 ---
 
-This short script demonstrates the use of the interior-point solver to
-compute the solution to a quadratic program with convex objective
-(*i.e.*, positive-definite Hessian) and convex, quadratic inequality
-constraints. More precisely, it finds the solution to the following
-optimization problem:
-\begin{equation}
-\begin{array}{ll}
-\mbox{minimize}   & x^THx/2 + q^Tx \\
-\mbox{subject to} & c_i(x) < b
-\end{array}
-\end{equation}
-where the inequality constraints are quadratic functions:
-\begin{equation}
-c_i(x) = x^TP_ix/2 + r_i^Tx
-\end{equation}
+## SCRIPT PARAMETERS
 
-The quantities ${H,q,P,r,b}$ are specified below. Note that this code is not a particularly efficient way to optimize a constrained quadratic program, and 
-should not be used for solving large quadratic optimization problems.
+```{r settings}
+n  <- 1000  # Number of samples.
+se <- 1     # Standard errors ("noise").
 
-This example comes from: H. P. Schwefel (1995), *Evolution and Optimum 
-Seeking.* The minimium occurs at (0,1,2,-1).
-
-## Define the optimization problem
-
-First, specify the quadratic objective function.
-
-```{r define_objective}
-H <- diag(c(2,2,4,2))
-q <- c(-5,-5,-21,7)
+# These parameters specify the mixture-of-normals prior. We use this 
+# same prior to simulate the data.
+s  <- c(1,0.1,0.01)      # Standard deviations.
+q  <- c(0.01,0.09,0.90)  # Mixture weights.
 ```
 
-Next, specify the quadratic inequality constraints.
+## GENERATE DATA SET
 
-```{r define_constraints}
-P <- list(diag(c(4,2,2,0)),
-          diag(c(2,2,2,2)),
-          diag(c(2,4,2,4)))
-r <- list(c(2,-1,0,-1),
-          c(1,-1,1,-1),
-          c(-1,0,0,-1))
-b <- c(5,8,10)
-```
+```{r gen_data}
 
-Set the starting point.
-
-```{r set_initial_solution}
-x0 <- c(0,0,0,0)
 ```
 
 ## Solve the optimization problem
 
- Solve the optimization problem with the primal-dual interior point solver.
 
 ```{r run_ipsolver}
-# TO DO: Update this code.
-# data = { H q P r b };   # All the information about the quadratic program.
-# z    = zeros(size(b));  # A dummy variable; does nothing.
-# x    = ipsolver(x0,@(x)qprog(x,z,data,'objective'),...
-#                 @(x)qprog(x,z,data,'gradient'),...
-#                 @(x)qprog(x,z,data,'constraints'),...
-#                 @(x,z)qprog(x,z,data,'jacobian'),...
-#                 'bfgs',1e-6,100,true);
-# fprintf('\nSolution:\n');
-# disp(x);
 ```
 
 ## Session information.
