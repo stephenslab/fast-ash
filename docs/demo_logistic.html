@@ -309,6 +309,37 @@ div.tocify {
 </div>
 
 
+<div id="script-parameters" class="section level2">
+<h2>SCRIPT PARAMETERS</h2>
+<pre class="r"><code>p     &lt;- 100   # Number of covariates.
+n     &lt;- 2000  # Number of samples.
+beta0 &lt;- (-2)  # Intercept.
+
+# Non-zero coefficients.
+beta.nonzero &lt;- c(1,-1,-1,1)
+
+# Initialize the sequence of pseudorandom numbers.
+set.seed(1)</code></pre>
+</div>
+<div id="generate-data-set" class="section level2">
+<h2>GENERATE DATA SET</h2>
+<pre class="r"><code># Generate the ground-truth regression coefficients.
+beta &lt;- rep(0,p)
+beta[sample(p,length(beta.nonzero))] &lt;- beta.nonzero
+
+# Generate the design matrix.
+X &lt;- matrix(rnorm(n*p),n,p)
+
+# Center the columns of X.
+rep.row &lt;- function (x, n)
+  matrix(x,n,length(x),byrow = TRUE)
+X &lt;- X - rep.row(colMeans(X),n)
+
+# Generate the binary responses.
+sigmoid &lt;- function (x)
+  1/(1 + exp(-x))
+y &lt;- as.numeric(runif(n) &lt; sigmoid(beta0 + X %*% beta))</code></pre>
+</div>
 <div id="session-information." class="section level2">
 <h2>Session information.</h2>
 <pre class="r"><code>print(sessionInfo())</code></pre>
