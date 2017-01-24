@@ -10,12 +10,16 @@ date: "2017-01-24"
 p     <- 100   # Number of covariates.
 n     <- 2000  # Number of samples.
 beta0 <- (-2)  # Intercept.
+sigma <- 1     # Prior on regression coefficients.
 
 # Non-zero coefficients.
 beta.nonzero <- c(1,-1,-1,1)
 
 # Initialize the sequence of pseudorandom numbers.
 set.seed(1)
+
+# Load the required packages.
+library(Matrix)
 ```
 
 ## GENERATE DATA SET
@@ -34,14 +38,116 @@ rep.row <- function (x, n)
   matrix(x,n,length(x),byrow = TRUE)
 X <- X - rep.row(colMeans(X),n)
 
+# Add a column of ones to the design matrix.
+X <- cbind(1,X)
+
 # Generate the binary responses.
 sigmoid <- function (x)
   1/(1 + exp(-x))
-y <- as.numeric(runif(n) < sigmoid(beta0 + X %*% beta))
+y <- as.numeric(runif(n) < sigmoid(X %*% c(beta0,beta)))
+```
+
+## COMPUTE MAXIMUM A POSTERIORI ESTIMATE
+
+Solve for the unconstrained maximum of the penalized log-likelihood using the
+Newton method, with a simple backtracking line search that guarantees
+the Wolfe "sufficient decrease" condition at each iteration.
+
+```{r solve_ml, results="hold", comment=NA}
+
+# Algorithm parameters.
+maxiter   <- 1e3    # Maximum number of iterations.
+tolerance <- 1e-8   # Stopping criterion.
+amin      <- 1e-6   # Minimum step size.
+stepdecr  <- 0.75   # Granularity of backtracking search.
+cgtol     <- 0.2    # Forcing sequence.
+lsdecr    <- 0.01   # Amount of actual decrease we will accept in line search.
+
+# Compute the Euclidean norm of x.
+norm2 <- function (x)
+  sqrt(sum(x^2))
+
+# Compute log(1 + exp(x)) in a numerically stable manner.
+logplusexp <- function (x) {
+  y    <- x
+  i    <- which(x < 8)
+  y[i] <- log(1 + exp(x[i]))
+  return(y)
+}
+
+# This function computes the objective; i.e., the negative log-likelihood
+# with a penalty term.
+objective_logistic <- function (X, y, sigma, beta)
+  sum(y*logplusexp(-X %*% beta)) + 
+  sum((1-y)*logplusexp(X %*% beta)) +
+  norm2(beta)^2/(2*sigma)
+
+# Initialize the ML estimate.
+b <- rep(0,p + 1)
+
+# Print the status legend.
+cat("  i objective    norm(grad) step size\n")
+
+# Repeat until we've reached the maximum number of iterations, or until
+# the convergence criterion is met.
+a <- NA
+for (iter in 1:maxiter) {
+
+  # Compute the objective; i.e. the negative penalized log-likelihood.
+  f <- objective_logistic(X,y,sigma,b)
+
+  # Compute the gradient.
+  r <- c(sigmoid(X %*% b))
+  g <- b/sigma - c(t(X) %*% (y - r))
+
+  # Compute the Hessian.
+  W <- Diagonal(n,r*(1-r))
+  H <- diag(rep(1,p+1))/sigma + t(X) %*% W %*% X
+  H <- as.matrix(H)
+  
+  # Print the optimization status.
+  cat(sprintf('%3d %+0.5e %0.4e %0.3e\n',iter,f,norm2(g)/p,a))
+
+  # Check the convergence criterion.
+  if (norm2(g) < p*tolerance)
+    break()
+
+  # Compute the Newton search direction.
+  dx <- c(solve(H,-g))
+    
+  # Conduct backtracking line search.
+  a <- 1  # Step size.
+  while (TRUE) {
+
+    # Compute the response of the objective at the new point.
+    bnew <- b + a*dx
+    fnew <- objective_logistic(X,y,sigma,bnew)
+
+    # This is the Wolfe "sufficient decrease" condition.
+    if (fnew < f + lsdecr*a*sum(g*dx))
+      break()
+
+    # Decrease the step size.
+    a <- a * stepdecr
+    if (a < amin)
+	    stop("Step size is too small")
+  }
+
+  # Move to the new iterate.
+  b <- bnew
+}
+cat("\n")
+
+# Print the solution.
+b0 <- b[1]
+b  <- b[-1]  
+cat(sprintf("intercept: true=%0.3f, estimate=%0.3f\n",beta0,b0))
+cat("Estimates of non-zero regression coefficients:\n")
+print(data.frame(true = beta,estimate = b)[beta != 0,],row.names = FALSE)
 ```
 
 ## Session information.
 
-```{r session_info}
+```{r session_info, comment=NA}
 print(sessionInfo())
 ```

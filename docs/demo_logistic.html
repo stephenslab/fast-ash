@@ -314,12 +314,16 @@ div.tocify {
 <pre class="r"><code>p     &lt;- 100   # Number of covariates.
 n     &lt;- 2000  # Number of samples.
 beta0 &lt;- (-2)  # Intercept.
+sigma &lt;- 1     # Prior on regression coefficients.
 
 # Non-zero coefficients.
 beta.nonzero &lt;- c(1,-1,-1,1)
 
 # Initialize the sequence of pseudorandom numbers.
-set.seed(1)</code></pre>
+set.seed(1)
+
+# Load the required packages.
+library(Matrix)</code></pre>
 </div>
 <div id="generate-data-set" class="section level2">
 <h2>GENERATE DATA SET</h2>
@@ -335,29 +339,144 @@ rep.row &lt;- function (x, n)
   matrix(x,n,length(x),byrow = TRUE)
 X &lt;- X - rep.row(colMeans(X),n)
 
+# Add a column of ones to the design matrix.
+X &lt;- cbind(1,X)
+
 # Generate the binary responses.
 sigmoid &lt;- function (x)
   1/(1 + exp(-x))
-y &lt;- as.numeric(runif(n) &lt; sigmoid(beta0 + X %*% beta))</code></pre>
+y &lt;- as.numeric(runif(n) &lt; sigmoid(X %*% c(beta0,beta)))</code></pre>
+</div>
+<div id="compute-maximum-a-posteriori-estimate" class="section level2">
+<h2>COMPUTE MAXIMUM A POSTERIORI ESTIMATE</h2>
+<p>Solve for the unconstrained mximum of the penalized log-likelihood via the Newton method with a simple backtracking line search that guarantees the Wolfe “sufficient decrease” condition at each iteration.</p>
+<pre class="r"><code># Algorithm parameters.
+maxiter   &lt;- 1e3    # Maximum number of iterations.
+tolerance &lt;- 1e-8   # Stopping criterion.
+amin      &lt;- 1e-6   # Minimum step size.
+stepdecr  &lt;- 0.75   # Granularity of backtracking search.
+cgtol     &lt;- 0.2    # Forcing sequence.
+lsdecr    &lt;- 0.01   # Amount of actual decrease we will accept in line search.
+
+# Compute the Euclidean norm of x.
+norm2 &lt;- function (x)
+  sqrt(sum(x^2))
+
+# Compute log(1 + exp(x)) in a numerically stable manner.
+logplusexp &lt;- function (x) {
+  y    &lt;- x
+  i    &lt;- which(x &lt; 8)
+  y[i] &lt;- log(1 + exp(x[i]))
+  return(y)
+}
+
+# This function computes the objective; i.e., the negative log-likelihood
+# with a penalty term.
+objective_logistic &lt;- function (X, y, sigma, beta)
+  sum(y*logplusexp(-X %*% beta)) + 
+  sum((1-y)*logplusexp(X %*% beta)) +
+  norm2(beta)^2/(2*sigma)
+
+# Initialize the ML estimate.
+b &lt;- rep(0,p + 1)
+
+# Print the status legend.
+cat(&quot;  i objective    norm(grad) step size\n&quot;)
+
+# Repeat until we&#39;ve reached the maximum number of iterations, or until
+# the convergence criterion is met.
+a &lt;- NA
+for (iter in 1:maxiter) {
+
+  # Compute the objective; i.e. the negative penalized log-likelihood.
+  f &lt;- objective_logistic(X,y,sigma,b)
+
+  # Compute the gradient.
+  r &lt;- c(sigmoid(X %*% b))
+  g &lt;- b/sigma - c(t(X) %*% (y - r))
+
+  # Compute the Hessian.
+  W &lt;- Diagonal(n,r*(1-r))
+  H &lt;- diag(rep(1,p+1))/sigma + t(X) %*% W %*% X
+  H &lt;- as.matrix(H)
+  
+  # Print the optimization status.
+  cat(sprintf(&#39;%3d %+0.5e %0.4e %0.3e\n&#39;,iter,f,norm2(g)/p,a))
+
+  # Check the convergence criterion.
+  if (norm2(g) &lt; p*tolerance)
+    break()
+
+  # Compute the Newton search direction.
+  dx &lt;- c(solve(H,-g))
+    
+  # Conduct backtracking line search.
+  a &lt;- 1  # Step size.
+  while (TRUE) {
+
+    # Compute the response of the objective at the new point.
+    bnew &lt;- b + a*dx
+    fnew &lt;- objective_logistic(X,y,sigma,bnew)
+
+    # This is the Wolfe &quot;sufficient decrease&quot; condition.
+    if (fnew &lt; f + lsdecr*a*sum(g*dx))
+      break()
+
+    # Decrease the step size.
+    a &lt;- a * stepdecr
+    if (a &lt; amin)
+        stop(&quot;Step size is too small&quot;)
+  }
+
+  # Move to the new iterate.
+  b &lt;- bnew
+}
+cat(&quot;\n&quot;)
+
+# Print the solution.
+b0 &lt;- b[1]
+b  &lt;- b[-1]  
+cat(sprintf(&quot;intercept: true=%0.3f, estimate=%0.3f\n&quot;,beta0,b0))
+cat(&quot;Estimates of non-zero regression coefficients:\n&quot;)
+print(data.frame(true = beta,estimate = b)[beta != 0,],row.names = FALSE)</code></pre>
+<pre><code>  i objective    norm(grad) step size
+  1 +1.38629e+03 7.3854e+00 NA
+  2 +7.85831e+02 1.8258e+00 1.000e+00
+  3 +6.94444e+02 5.4393e-01 1.000e+00
+  4 +6.78242e+02 1.0522e-01 1.000e+00
+  5 +6.77378e+02 6.3908e-03 1.000e+00
+  6 +6.77375e+02 2.7359e-05 1.000e+00
+  7 +6.77375e+02 5.0442e-10 1.000e+00
+
+intercept: true=-2.000, estimate=-2.046
+Estimates of non-zero regression coefficients:
+ true estimate
+    1   1.0102
+   -1  -1.2058
+   -1  -0.8736
+    1   0.9962</code></pre>
 </div>
 <div id="session-information." class="section level2">
 <h2>Session information.</h2>
 <pre class="r"><code>print(sessionInfo())</code></pre>
-<pre><code>## R version 3.3.2 (2016-10-31)
-## Platform: x86_64-apple-darwin13.4.0 (64-bit)
-## Running under: macOS Sierra 10.12.2
-## 
-## locale:
-## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
-## 
-## attached base packages:
-## [1] stats     graphics  grDevices utils     datasets  methods   base     
-## 
-## loaded via a namespace (and not attached):
-##  [1] backports_1.0.4 magrittr_1.5    rprojroot_1.1   tools_3.3.2    
-##  [5] htmltools_0.3.5 yaml_2.1.14     Rcpp_0.12.8     stringi_1.1.2  
-##  [9] rmarkdown_1.3   knitr_1.15.1    stringr_1.1.0   digest_0.6.10  
-## [13] evaluate_0.10</code></pre>
+<pre><code>R version 3.3.2 (2016-10-31)
+Platform: x86_64-apple-darwin13.4.0 (64-bit)
+Running under: macOS Sierra 10.12.2
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] Matrix_1.2-7.1
+
+loaded via a namespace (and not attached):
+ [1] backports_1.0.4 magrittr_1.5    rprojroot_1.1   tools_3.3.2    
+ [5] htmltools_0.3.5 yaml_2.1.14     Rcpp_0.12.8     stringi_1.1.2  
+ [9] rmarkdown_1.3   grid_3.3.2      knitr_1.15.1    stringr_1.1.0  
+[13] digest_0.6.10   lattice_0.20-34 evaluate_0.10  </code></pre>
 </div>
 
 <hr>
