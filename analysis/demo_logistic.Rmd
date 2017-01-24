@@ -1,0 +1,11 @@
+---
+title: "Small demo of nonlinear solver applied to logistic regression"
+author: "Peter Carbonetto"
+date: "2017-01-24"
+---
+
+## Session information.
+
+```{r session_info}
+print(sessionInfo())
+```
