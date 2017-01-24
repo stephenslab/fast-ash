@@ -4,7 +4,7 @@ author: "Peter Carbonetto"
 date: "2017-01-24"
 ---
 
-## SCRIPT PARAMETERS
+## Script parameters
 
 ```{r settings}
 n  <- 1000  # Number of samples.
@@ -14,21 +14,129 @@ se <- 1     # Standard errors ("noise").
 # same prior to simulate the data.
 s  <- c(1,0.1,0.01)      # Standard deviations.
 q  <- c(0.01,0.09,0.90)  # Mixture weights.
+
+# Initialize the sequence of pseudorandom numbers.
+set.seed(1)
 ```
 
-## GENERATE DATA SET
+## Generate data set
 
 ```{r gen_data}
-
+k  <- length(q)
+se <- rep(se,n)
+j  <- sample(k,n,prob = q,replace = TRUE)
+x  <- s[j] * rnorm(n)
 ```
 
 ## Solve the optimization problem
 
+```{r solve_ml, results="hold", comment=NA}
 
-```{r run_ipsolver}
+# Algorithm parameters.
+maxiter   <- 1000   # Maximum number of iterations.
+tolerance <- 1e-8   # Stopping criterion.
+amin      <- 1e-6   # Minimum step size.
+stepdecr  <- 0.75   # Granularity of backtracking search.
+cgtol     <- 0.2    # Forcing sequence.
+lsdecr    <- 0.01   # Amount of actual decrease we will accept in line search.
+
+# Compute the Euclidean norm of x.
+norm2 <- function (x)
+  sqrt(sum(x^2))
+
+# Compute the mixture weights from the softmax parameters.
+softmax <- function (u)
+  exp(c(0,u))/sum(exp(c(0,u)))
+
+# Return an n x k matrix in which each entry (i,j) gives the likelihood
+# of data point i given assignment to mixture component j.
+likelihood_matrix <- function (x, se, s) {
+  n <- length(x)
+  k <- length(s)
+  L <- matrix(0,n,k)
+  for (j in 1:k)
+    L[,j] <- dnorm(x,0,se + s[j])
+  return(L)
+}
+
+# Compute the negative marginal log-likelihood for the adaptive shrinkage 
+# model.
+objective_ash <- function (x, se, s, u)
+  sum(log(likelihood_matrix(x,se,s) %*% softmax(u)))
+
+# Compute the gradient of the marginal log-likelihood with respect to
+# the softmax parameters.
+gradient_ash <- function (x, se, s, u) {
+  # TO DO.
+}
+
+# Compute the Hessian of the marginal log-likelihood with respect to
+# the softmax parameters.
+hessian_ash <- function (x, se, s, u) {
+  # TO DO.
+}
+
+# Initialize the estimates of the mixture weights.
+u <- rep(0,k-1)
+
+# Print the status legend.
+cat("  i objective    norm(grad) step size\n")
+# Repeat until we've reached the maximum number of iterations, or until
+# the convergence criterion is met.
+a <- NA
+for (iter in 1:maxiter) {
+
+  # Compute the objective; i.e. the negative marginal log-likelihood.
+  f <- objective_ash(x,se,s,u)
+
+  # Compute the gradient.
+  # TO DO.
+  # g <- ...
+
+  # Compute the Hessian.
+  #
+  # NOTE: For now set H = I, which is equivalent to "steepest descent" 
+  # direction.
+  H <- diag(rep)
+
+  # Print the optimization status.
+  cat(sprintf('%3d %+0.5e %0.4e %0.3e\n',iter,f,norm2(g)/n,a))
+
+  # Check the convergence criterion.
+  if (norm2(g) < n*tolerance)
+    break()
+
+  # Compute the Newton search direction.
+  dx <- c(solve(H,-g))
+    
+  # Conduct backtracking line search.
+  a <- 1  # Step size.
+  while (TRUE) {
+
+    # Compute the response of the objective at the new point.
+    unew <- u + a*dx
+    fnew <- objective_ash(x,se,s,unew)
+
+    # This is the Wolfe "sufficient decrease" condition.
+    if (fnew < f + lsdecr*a*sum(g*dx))
+      break()
+
+    # Decrease the step size.
+    a <- a * stepdecr
+    if (a < amin)
+	    stop("Step size is too small")
+  }
+
+  # Move to the new iterate.
+  u <- unew
+}
+cat("\n")
+
+# Print the solution.
+# TO DO.
 ```
 
-## Session information.
+## Session information
 
 ```{r session_info}
 print(sessionInfo())

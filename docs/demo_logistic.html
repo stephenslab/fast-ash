@@ -310,7 +310,7 @@ div.tocify {
 
 
 <div id="script-parameters" class="section level2">
-<h2>SCRIPT PARAMETERS</h2>
+<h2>Script parameters</h2>
 <pre class="r"><code>p     &lt;- 100   # Number of covariates.
 n     &lt;- 2000  # Number of samples.
 beta0 &lt;- (-2)  # Intercept.
@@ -326,7 +326,7 @@ set.seed(1)
 library(Matrix)</code></pre>
 </div>
 <div id="generate-data-set" class="section level2">
-<h2>GENERATE DATA SET</h2>
+<h2>Generate data set</h2>
 <pre class="r"><code># Generate the ground-truth regression coefficients.
 beta &lt;- rep(0,p)
 beta[sample(p,length(beta.nonzero))] &lt;- beta.nonzero
@@ -348,15 +348,15 @@ sigmoid &lt;- function (x)
 y &lt;- as.numeric(runif(n) &lt; sigmoid(X %*% c(beta0,beta)))</code></pre>
 </div>
 <div id="compute-maximum-a-posteriori-estimate" class="section level2">
-<h2>COMPUTE MAXIMUM A POSTERIORI ESTIMATE</h2>
-<p>Solve for the unconstrained mximum of the penalized log-likelihood via the Newton method with a simple backtracking line search that guarantees the Wolfe “sufficient decrease” condition at each iteration.</p>
+<h2>Compute maximum a posteriori estimate</h2>
+<p>Solve for the unconstrained maximum of the penalized log-likelihood using the Newton method, with a simple backtracking line search that guarantees the Wolfe “sufficient decrease” condition at each iteration.</p>
 <pre class="r"><code># Algorithm parameters.
-maxiter   &lt;- 1e3    # Maximum number of iterations.
-tolerance &lt;- 1e-8   # Stopping criterion.
-amin      &lt;- 1e-6   # Minimum step size.
-stepdecr  &lt;- 0.75   # Granularity of backtracking search.
-cgtol     &lt;- 0.2    # Forcing sequence.
-lsdecr    &lt;- 0.01   # Amount of actual decrease we will accept in line search.
+maxiter   &lt;- 1000  # Maximum number of iterations.
+tolerance &lt;- 1e-8  # Stopping criterion.
+amin      &lt;- 1e-6  # Minimum step size.
+stepdecr  &lt;- 0.75  # Granularity of backtracking search.
+cgtol     &lt;- 0.2   # Forcing sequence.
+lsdecr    &lt;- 0.01  # Amount of actual decrease we will accept in line search.
 
 # Compute the Euclidean norm of x.
 norm2 &lt;- function (x)
@@ -397,9 +397,8 @@ for (iter in 1:maxiter) {
 
   # Compute the Hessian.
   W &lt;- Diagonal(n,r*(1-r))
-  H &lt;- diag(rep(1,p+1))/sigma + t(X) %*% W %*% X
-  H &lt;- as.matrix(H)
-  
+  H &lt;- as.matrix(diag(rep(1,p+1))/sigma + t(X) %*% W %*% X)
+
   # Print the optimization status.
   cat(sprintf(&#39;%3d %+0.5e %0.4e %0.3e\n&#39;,iter,f,norm2(g)/p,a))
 
@@ -456,8 +455,8 @@ Estimates of non-zero regression coefficients:
    -1  -0.8736
     1   0.9962</code></pre>
 </div>
-<div id="session-information." class="section level2">
-<h2>Session information.</h2>
+<div id="session-information" class="section level2">
+<h2>Session information</h2>
 <pre class="r"><code>print(sessionInfo())</code></pre>
 <pre><code>R version 3.3.2 (2016-10-31)
 Platform: x86_64-apple-darwin13.4.0 (64-bit)

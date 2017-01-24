@@ -4,7 +4,7 @@ author: "Peter Carbonetto"
 date: "2017-01-24"
 ---
 
-## SCRIPT PARAMETERS
+## Script parameters
 
 ```{r settings}
 p     <- 100   # Number of covariates.
@@ -22,7 +22,7 @@ set.seed(1)
 library(Matrix)
 ```
 
-## GENERATE DATA SET
+## Generate data set
 
 ```{r gen_data}
 
@@ -47,7 +47,7 @@ sigmoid <- function (x)
 y <- as.numeric(runif(n) < sigmoid(X %*% c(beta0,beta)))
 ```
 
-## COMPUTE MAXIMUM A POSTERIORI ESTIMATE
+## Compute maximum a posteriori estimate
 
 Solve for the unconstrained maximum of the penalized log-likelihood using the
 Newton method, with a simple backtracking line search that guarantees
@@ -56,12 +56,12 @@ the Wolfe "sufficient decrease" condition at each iteration.
 ```{r solve_ml, results="hold", comment=NA}
 
 # Algorithm parameters.
-maxiter   <- 1e3    # Maximum number of iterations.
-tolerance <- 1e-8   # Stopping criterion.
-amin      <- 1e-6   # Minimum step size.
-stepdecr  <- 0.75   # Granularity of backtracking search.
-cgtol     <- 0.2    # Forcing sequence.
-lsdecr    <- 0.01   # Amount of actual decrease we will accept in line search.
+maxiter   <- 1000  # Maximum number of iterations.
+tolerance <- 1e-8  # Stopping criterion.
+amin      <- 1e-6  # Minimum step size.
+stepdecr  <- 0.75  # Granularity of backtracking search.
+cgtol     <- 0.2   # Forcing sequence.
+lsdecr    <- 0.01  # Amount of actual decrease we will accept in line search.
 
 # Compute the Euclidean norm of x.
 norm2 <- function (x)
@@ -102,9 +102,8 @@ for (iter in 1:maxiter) {
 
   # Compute the Hessian.
   W <- Diagonal(n,r*(1-r))
-  H <- diag(rep(1,p+1))/sigma + t(X) %*% W %*% X
-  H <- as.matrix(H)
-  
+  H <- as.matrix(diag(rep(1,p+1))/sigma + t(X) %*% W %*% X)
+
   # Print the optimization status.
   cat(sprintf('%3d %+0.5e %0.4e %0.3e\n',iter,f,norm2(g)/p,a))
 
@@ -146,7 +145,7 @@ cat("Estimates of non-zero regression coefficients:\n")
 print(data.frame(true = beta,estimate = b)[beta != 0,],row.names = FALSE)
 ```
 
-## Session information.
+## Session information
 
 ```{r session_info, comment=NA}
 print(sessionInfo())
